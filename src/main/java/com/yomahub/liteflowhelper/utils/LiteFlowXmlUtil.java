@@ -63,6 +63,10 @@ public class LiteFlowXmlUtil {
         return null;
     }
 
+    public static boolean isLiteFlowXml(@Nullable XmlFile xmlFile){
+        return getLiteFlowRootTag(xmlFile) != null;
+    }
+
     /**
      * 从 LiteFlow 的根 <flow> 标签中获取 <nodes> 标签。
      *
