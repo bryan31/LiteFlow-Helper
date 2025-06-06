@@ -19,8 +19,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
-    <!-- Extension points defined by the plugin.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <!-- 右侧窗口 -->
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow
                 id="LiteFlow Chain Window"
@@ -28,6 +27,9 @@
                 factoryClass="com.yomahub.liteflowhelper.toolwindow.ChainWindowFactory"
                 icon="/pluginIcon.svg"
         />
+
+        <!-- 图标提供者 -->
+        <iconProvider implementation="com.yomahub.liteflowhelper.icon.LiteFlowXmlIconProvider"/>
     </extensions>
 
 </idea-plugin>
