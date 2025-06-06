@@ -149,7 +149,6 @@ public class LiteFlowXmlUtil {
         }
 
         if (nodeTypeValues.size() > 1) {
-            LOG.warn("类 " + psiClass.getQualifiedName() + " 中的 @LiteflowMethod 注解包含不同的 nodeType 值: " + nodeTypeValues + "。不符合类声明式组件标准。");
             return false; // 所有 nodeType 必须相同
         }
 
@@ -181,7 +180,6 @@ public class LiteFlowXmlUtil {
         // 检查 `nodeId` 属性是否存在且非空
         String nodeId = getAnnotationAttributeValue(lfMethodAnnotation, "nodeId");
         if (nodeId == null || nodeId.trim().isEmpty()) {
-            LOG.warn("在 " + psiMethod.getContainingClass().getQualifiedName() + "." + psiMethod.getName() + " 中发现一个 @LiteflowMethod，但缺少 nodeId 属性。已跳过。");
             return false;
         }
 
