@@ -28,8 +28,11 @@
                 icon="/pluginIcon.svg"
         />
 
-        <!-- 图标提供者 -->
+        <!-- xml图标提供者 -->
         <iconProvider implementation="com.yomahub.liteflowhelper.icon.LiteFlowXmlIconProvider"/>
+
+        <!-- Java 组件图标提供者 -->
+        <iconProvider implementation="com.yomahub.liteflowhelper.icon.LiteFlowComponentIconProvider" order="first"/>
     </extensions>
 
 </idea-plugin>
