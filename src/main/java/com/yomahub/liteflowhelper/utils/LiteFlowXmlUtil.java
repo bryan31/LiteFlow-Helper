@@ -37,34 +37,27 @@ public class LiteFlowXmlUtil {
     //</editor-fold>
 
     //<editor-fold desc="XML处理方法">
+
     /**
-     * 判断一个 XML 文件是否是 LiteFlow 的配置文件。
+     * [核心修改] 判断一个 XML 文件是否是 LiteFlow 的配置文件。
      * LiteFlow 配置文件的特征是：
      * 1. 根标签是 <flow>
      * 2. 必须包含至少一个 <chain> 标签
      *
      * @param xmlFile 要检查的 XmlFile 对象
-     * @return 如果是 LiteFlow XML 文件则返回其根 <flow> 标签，否则返回 null。
+     * @return 如果是 LiteFlow XML 文件则返回 true，否则返回 false。
      */
-    @Nullable
-    public static XmlTag getLiteFlowRootTag(@Nullable XmlFile xmlFile) {
+    public static boolean isLiteFlowXml(@Nullable XmlFile xmlFile) {
         if (xmlFile == null) {
-            return null;
+            return false;
         }
         XmlDocument document = xmlFile.getDocument();
         if (document == null) {
-            return null;
+            return false;
         }
         XmlTag rootTag = document.getRootTag();
         // 检查根标签是否为 "flow" 并且至少包含一个 "chain" 子标签
-        if (rootTag != null && "flow".equals(rootTag.getName()) && rootTag.findSubTags("chain").length > 0) {
-            return rootTag;
-        }
-        return null;
-    }
-
-    public static boolean isLiteFlowXml(@Nullable XmlFile xmlFile){
-        return getLiteFlowRootTag(xmlFile) != null;
+        return rootTag != null && "flow".equals(rootTag.getName()) && rootTag.findSubTags("chain").length > 0;
     }
 
     /**

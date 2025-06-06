@@ -45,9 +45,8 @@ public class LiteFlowXmlIconProvider extends IconProvider {
         if (element instanceof XmlFile) {
             XmlFile xmlFile = (XmlFile) element;
 
-            // 使用您项目中已有的工具类来判断该 XML 文件是否为 LiteFlow 配置文件。
-            // 这个判断逻辑正是您在问题中指定的 `getLiteFlowRootTag` 方法。
-            if (LiteFlowXmlUtil.getLiteFlowRootTag(xmlFile) != null) {
+            // [核心修改] 使用返回 boolean 的 isLiteFlowXml 方法进行判断。
+            if (LiteFlowXmlUtil.isLiteFlowXml(xmlFile)) {
                 // 如果判断为真，则返回我们的自定义图标。
                 return LITEFLOW_XML_ICON;
             }
