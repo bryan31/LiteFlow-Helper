@@ -22,7 +22,7 @@
     <!-- 右侧窗口 -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- 注册项目级服务 -->
-        <projectService serviceImplementation="com.yomahub.liteflowhelper.toolwindow.service.LiteFlowCacheService"/>
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheService"/>
 
         <toolWindow
                 id="LiteFlow Chain Window"
