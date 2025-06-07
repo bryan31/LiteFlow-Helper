@@ -223,13 +223,17 @@ public class LiteFlowXmlUtil {
         PsiAnnotation liteflowAnnotation = psiClass.getAnnotation(LITEFLOW_COMPONENT_ANNOTATION);
         if (liteflowAnnotation != null) {
             String nodeId = getAnnotationAttributeValue(liteflowAnnotation, "value");
-            if (nodeId != null && !nodeId.trim().isEmpty()) return nodeId;
+            if (nodeId != null && !nodeId.trim().isEmpty()) {
+                return nodeId;
+            }
         }
 
         PsiAnnotation springAnnotation = psiClass.getAnnotation(SPRING_COMPONENT_ANNOTATION);
         if (springAnnotation != null) {
             String nodeId = getAnnotationAttributeValue(springAnnotation, "value");
-            if (nodeId != null && !nodeId.trim().isEmpty()) return nodeId;
+            if (nodeId != null && !nodeId.trim().isEmpty()) {
+                return nodeId;
+            }
         }
         return null;
     }

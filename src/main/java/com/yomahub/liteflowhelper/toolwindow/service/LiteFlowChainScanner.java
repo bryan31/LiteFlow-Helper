@@ -70,7 +70,9 @@ public class LiteFlowChainScanner {
                     if (LiteFlowXmlUtil.isLiteFlowXml(xmlFile)) {
                         // 判断通过后，可以安全地获取根标签进行处理
                         XmlTag flowRootTag = xmlFile.getDocument().getRootTag();
-                        if (flowRootTag == null) continue; // 添加一个防御性检查
+                        if (flowRootTag == null) {
+                            continue; // 添加一个防御性检查
+                        }
 
                         // <flow> 标签下的 <chain> 标签代表一个流程链
                         XmlTag[] chainTags = flowRootTag.findSubTags("chain");

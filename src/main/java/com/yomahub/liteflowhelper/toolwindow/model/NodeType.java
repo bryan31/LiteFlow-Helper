@@ -68,7 +68,9 @@ public enum NodeType {
      * @return 对应的 NodeType，如果找不到则返回 UNKNOWN
      */
     public static NodeType fromComponentClass(String fqClassName) {
-        if (fqClassName == null) return UNKNOWN;
+        if (fqClassName == null) {
+            return UNKNOWN;
+        }
         for (NodeType type : values()) {
             // 检查是否为继承式组件类型 (通过枚举名称约定) 并且标识符匹配
             if (type.name().endsWith("_COMPONENT") && fqClassName.equals(type.getIdentifier())) {
@@ -84,7 +86,9 @@ public enum NodeType {
      * @return 对应的 NodeType，如果找不到则返回 UNKNOWN
      */
     public static NodeType fromXmlType(String xmlTypeAttr) {
-        if (xmlTypeAttr == null) return UNKNOWN;
+        if (xmlTypeAttr == null) {
+            return UNKNOWN;
+        }
         for (NodeType type : values()) {
             // 检查是否为脚本类型 (通过枚举名称约定) 并且标识符匹配
             if (type.name().startsWith("SCRIPT_") && xmlTypeAttr.equals(type.getIdentifier())) {

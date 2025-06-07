@@ -132,9 +132,13 @@ public class ChainWindowFactory implements ToolWindowFactory {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
-                    if (project == null || project.isDisposed() || DumbService.getInstance(project).isDumb()) return;
+                    if (project == null || project.isDisposed() || DumbService.getInstance(project).isDumb()) {
+                        return;
+                    }
                     TreePath path = tree.getPathForLocation(e.getX(), e.getY());
-                    if (path == null) return;
+                    if (path == null) {
+                        return;
+                    }
                     DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) path.getLastPathComponent();
                     Object userObject = selectedNode.getUserObject();
                     if (userObject instanceof ChainInfo) {
@@ -218,7 +222,9 @@ public class ChainWindowFactory implements ToolWindowFactory {
     }
 
     private void showIndexingMessage() {
-        if (chainsRootNode == null || liteflowNodesRootNode == null || treeModel == null || tree == null) return;
+        if (chainsRootNode == null || liteflowNodesRootNode == null || treeModel == null || tree == null) {
+            return;
+        }
         chainsRootNode.removeAllChildren();
         liteflowNodesRootNode.removeAllChildren();
         chainsRootNode.add(new DefaultMutableTreeNode(MSG_INDEXING));
@@ -229,7 +235,9 @@ public class ChainWindowFactory implements ToolWindowFactory {
     }
 
     private void startAutoRefreshTimer() {
-        if (autoRefreshTimer != null) autoRefreshTimer.cancel();
+        if (autoRefreshTimer != null) {
+            autoRefreshTimer.cancel();
+        }
 
         autoRefreshTimer = new Timer("LiteFlowHelperAutoRefreshTimer", true);
         autoRefreshTimer.schedule(new TimerTask() {

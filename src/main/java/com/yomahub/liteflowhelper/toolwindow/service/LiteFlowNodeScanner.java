@@ -79,13 +79,17 @@ public class LiteFlowNodeScanner {
         GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
 
         for (String baseClassName : LITEFLOW_BASE_CLASSES) {
-            if (project.isDisposed()) return Collections.emptyList();
+            if (project.isDisposed()) {
+                return Collections.emptyList();
+            }
 
             PsiClass baseClass = psiFacade.findClass(baseClassName, allScope);
             if (baseClass != null) {
                 Collection<PsiClass> inheritors = ClassInheritorsSearch.search(baseClass, projectScope, true).findAll();
                 for (PsiClass inheritor : inheritors) {
-                    if (project.isDisposed()) return Collections.emptyList();
+                    if (project.isDisposed()) {
+                        return Collections.emptyList();
+                    }
 
                     // [重构] 使用工具类进行判断
                     if (LiteFlowXmlUtil.isInheritanceComponent(inheritor)) {
@@ -132,7 +136,9 @@ public class LiteFlowNodeScanner {
         }
 
         for (PsiClass psiClass : matchedClasses) {
-            if (project.isDisposed()) return Collections.emptyList();
+            if (project.isDisposed()) {
+                return Collections.emptyList();
+            }
 
             // [重构] 使用工具类进行判断
             if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass)) {
@@ -151,7 +157,9 @@ public class LiteFlowNodeScanner {
                     PsiAnnotation annotation = method.getAnnotation(LiteFlowXmlUtil.LITEFLOW_METHOD_ANNOTATION);
                     if(annotation != null){
                         nodeTypeStr = LiteFlowXmlUtil.getAnnotationEnumValue(annotation, "nodeType", LiteFlowXmlUtil.LITEFLOW_NODE_TYPE_ENUM_FQ);
-                        if(nodeTypeStr == null) nodeTypeStr = "COMMON";
+                        if(nodeTypeStr == null) {
+                            nodeTypeStr = "COMMON";
+                        }
                         break; // 找到第一个就够了
                     }
                 }
@@ -190,7 +198,9 @@ public class LiteFlowNodeScanner {
         }
 
         for (PsiClass psiClass : candidateClasses) {
-            if (project.isDisposed()) return Collections.emptyList();
+            if (project.isDisposed()) {
+                return Collections.emptyList();
+            }
 
             // 检查是否为合法的声明式组件容器 (非接口、非抽象、非继承式)
             if (psiClass.isInterface() || psiClass.isAnnotationType() || psiClass.isEnum() || psiClass.hasModifierProperty(PsiModifier.ABSTRACT)
@@ -222,11 +232,21 @@ public class LiteFlowNodeScanner {
      * 根据Java类直接继承的LiteFlow基类全限定名来确定节点类型 (用于继承式组件)。
      */
     private NodeType determineNodeTypeFromSuperClass(String directSuperClassName) {
-        if ("com.yomahub.liteflow.core.NodeComponent".equals(directSuperClassName)) return NodeType.COMMON_COMPONENT;
-        if ("com.yomahub.liteflow.core.NodeSwitchComponent".equals(directSuperClassName)) return NodeType.SWITCH_COMPONENT;
-        if ("com.yomahub.liteflow.core.NodeBooleanComponent".equals(directSuperClassName)) return NodeType.BOOLEAN_COMPONENT;
-        if ("com.yomahub.liteflow.core.NodeForComponent".equals(directSuperClassName)) return NodeType.FOR_COMPONENT;
-        if ("com.yomahub.liteflow.core.NodeIteratorComponent".equals(directSuperClassName)) return NodeType.ITERATOR_COMPONENT;
+        if ("com.yomahub.liteflow.core.NodeComponent".equals(directSuperClassName)) {
+            return NodeType.COMMON_COMPONENT;
+        }
+        if ("com.yomahub.liteflow.core.NodeSwitchComponent".equals(directSuperClassName)) {
+            return NodeType.SWITCH_COMPONENT;
+        }
+        if ("com.yomahub.liteflow.core.NodeBooleanComponent".equals(directSuperClassName)) {
+            return NodeType.BOOLEAN_COMPONENT;
+        }
+        if ("com.yomahub.liteflow.core.NodeForComponent".equals(directSuperClassName)) {
+            return NodeType.FOR_COMPONENT;
+        }
+        if ("com.yomahub.liteflow.core.NodeIteratorComponent".equals(directSuperClassName)) {
+            return NodeType.ITERATOR_COMPONENT;
+        }
         return NodeType.UNKNOWN;
     }
 
@@ -239,7 +259,9 @@ public class LiteFlowNodeScanner {
         PsiManager psiManager = PsiManager.getInstance(project);
 
         for (VirtualFile virtualFile : virtualFiles) {
-            if (project.isDisposed()) break;
+            if (project.isDisposed()) {
+                break;
+            }
             PsiFile psiFile = psiManager.findFile(virtualFile);
             if (psiFile instanceof XmlFile) {
                 XmlFile xmlFile = (XmlFile) psiFile;
@@ -247,12 +269,16 @@ public class LiteFlowNodeScanner {
                 if (LiteFlowXmlUtil.isLiteFlowXml(xmlFile)) {
                     // 判断通过后，可以安全地获取根标签进行处理
                     XmlTag flowRootTag = xmlFile.getDocument().getRootTag();
-                    if (flowRootTag == null) continue; // 添加一个防御性检查
+                    if (flowRootTag == null) {
+                        continue; // 添加一个防御性检查
+                    }
 
                     XmlTag nodesTag = LiteFlowXmlUtil.getNodesTag(flowRootTag);
                     if (nodesTag != null) {
                         for (XmlTag nodeTag : nodesTag.findSubTags("node")) {
-                            if (project.isDisposed()) return Collections.emptyList();
+                            if (project.isDisposed()) {
+                                return Collections.emptyList();
+                            }
 
                             String xmlId = nodeTag.getAttributeValue("id");
                             String xmlName = nodeTag.getAttributeValue("name");
