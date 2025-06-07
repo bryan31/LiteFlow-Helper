@@ -36,6 +36,12 @@
 
         <!-- Java 组件图标提供者 -->
         <iconProvider implementation="com.yomahub.liteflowhelper.icon.LiteFlowComponentIconProvider" order="first"/>
+
+        <!-- 新增：注册Annotator -->
+        <annotator language="XML" implementationClass="com.yomahub.liteflowhelper.highlight.LiteFlowChainAnnotator"/>
+
+        <!-- 新增：注册ReferenceContributor -->
+        <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
     </extensions>
 
 </idea-plugin>

@@ -326,7 +326,9 @@ public class ChainWindowFactory implements ToolWindowFactory {
     }
 
     private void updateTreeWithChains(List<ChainInfo> chainsToShow, boolean expandNode) {
-        if (chainsRootNode == null || treeModel == null || tree == null || project == null || project.isDisposed()) return;
+        if (chainsRootNode == null || treeModel == null || tree == null || project == null || project.isDisposed()) {
+            return;
+        }
         chainsRootNode.removeAllChildren();
         if (chainsToShow == null || chainsToShow.isEmpty()) {
             chainsRootNode.add(new DefaultMutableTreeNode(MSG_NO_CHAINS_FOUND));
@@ -340,7 +342,9 @@ public class ChainWindowFactory implements ToolWindowFactory {
     }
 
     private void updateTreeWithLiteFlowNodes(List<LiteFlowNodeInfo> nodesToShow, boolean expandNode) {
-        if (liteflowNodesRootNode == null || treeModel == null || tree == null || project == null || project.isDisposed()) return;
+        if (liteflowNodesRootNode == null || treeModel == null || tree == null || project == null || project.isDisposed()) {
+            return;
+        }
         liteflowNodesRootNode.removeAllChildren();
         if (nodesToShow == null || nodesToShow.isEmpty()) {
             liteflowNodesRootNode.add(new DefaultMutableTreeNode(MSG_NO_NODES_FOUND));
