@@ -1,4 +1,4 @@
-package com.yomahub.liteflowhelper.toolwindow.service;
+package com.yomahub.liteflowhelper.service;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.components.Service;
