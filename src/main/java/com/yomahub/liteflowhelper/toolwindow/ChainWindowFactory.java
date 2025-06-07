@@ -24,7 +24,7 @@ import com.intellij.ui.treeStructure.Tree;
 import com.yomahub.liteflowhelper.toolwindow.model.ChainInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
-import com.yomahub.liteflowhelper.toolwindow.service.LiteFlowCacheService;
+import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
 import com.yomahub.liteflowhelper.toolwindow.service.LiteFlowChainScanner;
 import com.yomahub.liteflowhelper.toolwindow.service.LiteFlowNodeScanner;
 import org.jetbrains.annotations.NotNull;
