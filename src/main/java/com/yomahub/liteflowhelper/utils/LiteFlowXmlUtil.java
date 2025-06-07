@@ -1,6 +1,8 @@
 package com.yomahub.liteflowhelper.utils;
 
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlDocument;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
@@ -39,7 +41,7 @@ public class LiteFlowXmlUtil {
     //<editor-fold desc="XML处理方法">
 
     /**
-     * [核心修改] 判断一个 XML 文件是否是 LiteFlow 的配置文件。
+     * 判断一个 XML 文件是否是 LiteFlow 的配置文件。
      * LiteFlow 配置文件的特征是：
      * 1. 根标签是 <flow>
      * 2. 必须包含至少一个 <chain> 标签
@@ -81,40 +83,45 @@ public class LiteFlowXmlUtil {
     //<editor-fold desc="核心判断逻辑 (Refactored Methods)">
 
     /**
-     * [重构新增] 判断一个类是否为 LiteFlow 的继承式组件。
+     * [重构] 判断一个类是否为 LiteFlow 的继承式组件。
+     * 该方法会自行获取 Project 和 NodeComponent 基类。
      * 条件：
      * 1. 是一个具体的类 (非接口、非抽象类)。
      * 2. 直接或间接继承自 com.yomahub.liteflow.core.NodeComponent。
      * @param psiClass 要判断的类。
-     * @param nodeComponentBaseClass NodeComponent 的 PsiClass 对象 (用于性能，避免重复查找)。
      * @return 如果是继承式组件则返回 true。
      */
-    public static boolean isInheritanceComponent(@NotNull PsiClass psiClass, @Nullable PsiClass nodeComponentBaseClass) {
+    public static boolean isInheritanceComponent(@NotNull PsiClass psiClass) {
         // 检查是否为具体类
         if (psiClass.isInterface() || psiClass.hasModifierProperty(PsiModifier.ABSTRACT)) {
             return false;
         }
+        // 自行获取项目和基类
+        Project project = psiClass.getProject();
+        PsiClass nodeComponentBaseClass = JavaPsiFacade.getInstance(project).findClass(NODE_COMPONENT_CLASS, GlobalSearchScope.allScope(project));
+
         // 检查继承关系
         return nodeComponentBaseClass != null && psiClass.isInheritor(nodeComponentBaseClass, true);
     }
 
     /**
-     * [重构新增] 判断一个类是否为 LiteFlow 的类声明式组件。
+     * [重构] 判断一个类是否为 LiteFlow 的类声明式组件。
      * 条件：
      * 1. 是一个具体的、非继承式的组件类。
      * 2. 必须拥有 @LiteflowComponent 或 @Component 注解。
      * 3. 必须包含至少一个 @LiteflowMethod 注解。
-     * 4. 所有 @LiteflowMethod 注解的 nodeType 属性值必须相同。
+     * 4. 所有 @LiteflowMethod 注解都不能定义 `nodeId` 属性。
+     * 5. 所有 @LiteflowMethod 注解的 `nodeType` 属性值必须相同 (或都为默认值)。
      * @param psiClass 要判断的类。
-     * @param nodeComponentBaseClass NodeComponent 的 PsiClass 对象。
      * @return 如果是类声明式组件则返回 true。
      */
-    public static boolean isClassDeclarativeComponent(@NotNull PsiClass psiClass, @Nullable PsiClass nodeComponentBaseClass) {
+    public static boolean isClassDeclarativeComponent(@NotNull PsiClass psiClass) {
         // 条件1: 必须是具体类，且不能是继承式组件
         if (psiClass.isInterface() || psiClass.isAnnotationType() || psiClass.isEnum() || psiClass.hasModifierProperty(PsiModifier.ABSTRACT)) {
             return false;
         }
-        if (isInheritanceComponent(psiClass, nodeComponentBaseClass)) {
+        // 调用重构后的 isInheritanceComponent 方法
+        if (isInheritanceComponent(psiClass)) {
             return false;
         }
 
@@ -123,7 +130,7 @@ public class LiteFlowXmlUtil {
             return false;
         }
 
-        // 条件3 & 4: 检查 @LiteflowMethod 注解
+        // 条件3, 4, 5: 检查 @LiteflowMethod 注解
         List<PsiAnnotation> liteflowMethodAnnotations = new ArrayList<>();
         for (PsiMethod method : psiClass.getMethods()) {
             PsiAnnotation lfMethodAnnotation = method.getAnnotation(LITEFLOW_METHOD_ANNOTATION);
@@ -138,6 +145,13 @@ public class LiteFlowXmlUtil {
 
         Set<String> nodeTypeValues = new HashSet<>();
         for (PsiAnnotation annotation : liteflowMethodAnnotations) {
+            // [新增逻辑] 检查 nodeId 属性，如果存在，则不是类声明式组件
+            String nodeId = getAnnotationAttributeValue(annotation, "nodeId");
+            if (nodeId != null && !nodeId.trim().isEmpty()) {
+                return false;
+            }
+
+            // 检查 nodeType 属性
             String currentEnumConstantName = getAnnotationEnumValue(annotation, "nodeType", LITEFLOW_NODE_TYPE_ENUM_FQ);
             if (currentEnumConstantName == null) {
                 currentEnumConstantName = "COMMON"; // 注解未指定nodeType时的默认值
@@ -153,7 +167,7 @@ public class LiteFlowXmlUtil {
     }
 
     /**
-     * [重构新增] 判断一个方法是否为 LiteFlow 的方法声明式组件。
+     * 判断一个方法是否为 LiteFlow 的方法声明式组件。
      * 注意：这个方法只检查方法本身，其所属的类是否符合容器条件需要在外部判断。
      * 条件:
      * 1. 方法被 @LiteflowMethod 标注。
@@ -181,6 +195,21 @@ public class LiteFlowXmlUtil {
         }
 
         return true;
+    }
+
+    /**
+     * [新增重载方法] 判断一个类是否包含任何方法声明式组件。
+     *
+     * @param psiClass 要判断的类。
+     * @return 如果该类中至少有一个方法是方法声明式组件，则返回 true。
+     */
+    public static boolean isMethodDeclarativeComponent(@NotNull PsiClass psiClass) {
+        for (PsiMethod method : psiClass.getMethods()) {
+            if (isMethodDeclarativeComponent(method)) {
+                return true;
+            }
+        }
+        return false;
     }
     //</editor-fold>
 

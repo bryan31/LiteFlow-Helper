@@ -4,11 +4,8 @@ import com.intellij.ide.IconProvider;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiMethod;
-import com.intellij.psi.search.GlobalSearchScope;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -49,28 +46,20 @@ public class LiteFlowComponentIconProvider extends IconProvider {
         if (element instanceof PsiClass) {
             PsiClass psiClass = (PsiClass) element;
 
-            // 为了调用判断逻辑，需要获取 NodeComponent 的 PsiClass 实例
-            PsiClass nodeComponentBaseClass = JavaPsiFacade.getInstance(project).findClass(
-                    LiteFlowXmlUtil.NODE_COMPONENT_CLASS, GlobalSearchScope.allScope(project)
-            );
-
             // 1. 判断是否为继承式组件
-            if (LiteFlowXmlUtil.isInheritanceComponent(psiClass, nodeComponentBaseClass)) {
+            if (LiteFlowXmlUtil.isInheritanceComponent(psiClass)) {
                 return COMMON_COMPONENT_ICON;
             }
 
             // 2. 判断是否为类声明式组件
-            if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass, nodeComponentBaseClass)) {
+            if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass)) {
                 return COMMON_COMPONENT_ICON;
             }
 
             // 3. 判断类中是否包含方法声明式组件
-            // 即使类本身不构成一个 "类声明式组件"，它也可能是一个包含 "方法声明式组件" 的容器。
-            for (PsiMethod method : psiClass.getMethods()) {
-                if (LiteFlowXmlUtil.isMethodDeclarativeComponent(method)) {
-                    // 只要类中有一个方法是方法声明式组件，就认为这个类应该显示 multi.svg 图标
-                    return MULTI_COMPONENT_ICON;
-                }
+            // 使用重载后的 isMethodDeclarativeComponent(PsiClass) 方法，使代码更简洁
+            if (LiteFlowXmlUtil.isMethodDeclarativeComponent(psiClass)) {
+                return MULTI_COMPONENT_ICON;
             }
         }
 

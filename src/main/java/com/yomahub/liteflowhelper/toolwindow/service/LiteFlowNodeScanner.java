@@ -19,7 +19,6 @@ import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -61,17 +60,11 @@ public class LiteFlowNodeScanner {
                 return Collections.emptyList();
             }
 
-            // 在所有扫描前，先找到 NodeComponent 基类，以供后续判断使用
-            PsiClass nodeComponentBaseClass = JavaPsiFacade.getInstance(project).findClass(LiteFlowXmlUtil.NODE_COMPONENT_CLASS, GlobalSearchScope.allScope(project));
-            if (nodeComponentBaseClass == null) {
-                LOG.warn("无法在项目中找到 " + LiteFlowXmlUtil.NODE_COMPONENT_CLASS + " 基类，某些扫描可能会受影响。");
-            }
-
             List<LiteFlowNodeInfo> nodeInfos = new ArrayList<>();
-            nodeInfos.addAll(findJavaClassInheritanceNodes(project, nodeComponentBaseClass));
+            nodeInfos.addAll(findJavaClassInheritanceNodes(project));
             nodeInfos.addAll(findXmlScriptNodes(project));
-            nodeInfos.addAll(findDeclarativeClassNodes(project, nodeComponentBaseClass));
-            nodeInfos.addAll(findDeclarativeMethodNodes(project, nodeComponentBaseClass));
+            nodeInfos.addAll(findDeclarativeClassNodes(project));
+            nodeInfos.addAll(findDeclarativeMethodNodes(project));
             return nodeInfos;
         });
     }
@@ -79,7 +72,7 @@ public class LiteFlowNodeScanner {
     /**
      * 查找项目中所有基于Java类继承定义的LiteFlow节点。
      */
-    private List<LiteFlowNodeInfo> findJavaClassInheritanceNodes(@NotNull Project project, @NotNull PsiClass nodeComponentBaseClass) {
+    private List<LiteFlowNodeInfo> findJavaClassInheritanceNodes(@NotNull Project project) {
         List<LiteFlowNodeInfo> javaNodeInfos = new ArrayList<>();
         JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
         GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
@@ -95,7 +88,7 @@ public class LiteFlowNodeScanner {
                     if (project.isDisposed()) return Collections.emptyList();
 
                     // [重构] 使用工具类进行判断
-                    if (LiteFlowXmlUtil.isInheritanceComponent(inheritor, nodeComponentBaseClass)) {
+                    if (LiteFlowXmlUtil.isInheritanceComponent(inheritor)) {
                         String nodeIdFromAnnotation = LiteFlowXmlUtil.getNodeIdFromComponentAnnotations(inheritor);
                         String nodeName = inheritor.getName();
                         String primaryId = nodeIdFromAnnotation != null ? nodeIdFromAnnotation : LiteFlowXmlUtil.convertClassNameToCamelCase(nodeName);
@@ -117,7 +110,7 @@ public class LiteFlowNodeScanner {
     /**
      * 扫描声明式的类组件
      */
-    private List<LiteFlowNodeInfo> findDeclarativeClassNodes(@NotNull Project project, @Nullable PsiClass nodeComponentBaseClass) {
+    private List<LiteFlowNodeInfo> findDeclarativeClassNodes(@NotNull Project project) {
         List<LiteFlowNodeInfo> declarativeNodeInfos = new ArrayList<>();
         JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
         GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
@@ -142,7 +135,7 @@ public class LiteFlowNodeScanner {
             if (project.isDisposed()) return Collections.emptyList();
 
             // [重构] 使用工具类进行判断
-            if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass, nodeComponentBaseClass)) {
+            if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass)) {
                 String nodeId = LiteFlowXmlUtil.getNodeIdFromComponentAnnotations(psiClass);
                 if (nodeId == null) {
                     nodeId = LiteFlowXmlUtil.convertClassNameToCamelCase(psiClass.getName());
@@ -175,7 +168,7 @@ public class LiteFlowNodeScanner {
     /**
      * 扫描方法级别的声明式组件。
      */
-    private List<LiteFlowNodeInfo> findDeclarativeMethodNodes(@NotNull Project project, @Nullable PsiClass nodeComponentBaseClass) {
+    private List<LiteFlowNodeInfo> findDeclarativeMethodNodes(@NotNull Project project) {
         List<LiteFlowNodeInfo> nodeInfos = new ArrayList<>();
         JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
         GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
@@ -201,7 +194,7 @@ public class LiteFlowNodeScanner {
 
             // 检查是否为合法的声明式组件容器 (非接口、非抽象、非继承式)
             if (psiClass.isInterface() || psiClass.isAnnotationType() || psiClass.isEnum() || psiClass.hasModifierProperty(PsiModifier.ABSTRACT)
-                    || LiteFlowXmlUtil.isInheritanceComponent(psiClass, nodeComponentBaseClass)) {
+                    || LiteFlowXmlUtil.isInheritanceComponent(psiClass)) {
                 continue;
             }
 

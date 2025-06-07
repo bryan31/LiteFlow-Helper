@@ -19,7 +19,7 @@ repositories {
 dependencies {
     intellijPlatform {
         // 你正在基于 IntelliJ IDEA Community Edition 2024.2.5 的 SDK 进行开发
-        create("IC", "2025.1.1")
+        create("IU", "2025.1.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
         // Add necessary plugin dependencies for compilation here, example:
