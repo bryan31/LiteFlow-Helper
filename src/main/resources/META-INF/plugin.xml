@@ -18,6 +18,8 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
+    <depends>org.jetbrains.plugins.yaml</depends>
+    <depends>com.intellij.properties</depends>
 
     <!-- 右侧窗口 -->
     <extensions defaultExtensionNs="com.intellij">
@@ -42,6 +44,11 @@
 
         <!-- 新增：注册ReferenceContributor -->
         <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
+
+        <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
+
+        <psi.referenceContributor language="Properties" implementation="com.yomahub.liteflowhelper.reference.config.LiteFlowRuleSourceReferenceContributor"/>
+        <psi.referenceContributor language="yaml" implementation="com.yomahub.liteflowhelper.reference.config.LiteFlowRuleSourceReferenceContributor"/>
     </extensions>
 
 </idea-plugin>
