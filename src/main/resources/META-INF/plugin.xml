@@ -26,6 +26,8 @@
         <!-- 注册项目级服务 -->
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheService"/>
 
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.FileService"/>
+
         <toolWindow
                 id="LiteFlow Chain Window"
                 anchor="right"
@@ -47,8 +49,8 @@
 
         <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
 
-        <psi.referenceContributor language="Properties" implementation="com.yomahub.liteflowhelper.reference.config.LiteFlowRuleSourceReferenceContributor"/>
-        <psi.referenceContributor language="yaml" implementation="com.yomahub.liteflowhelper.reference.config.LiteFlowRuleSourceReferenceContributor"/>
+        <!-- ruleSource to File 跳转 Ctrl+左键 或 Ctrl+B-->
+        <gotoDeclarationHandler order="first" implementation="com.yomahub.liteflowhelper.reference.config.RuleSourceToFileGotoDeclarationHandler" />
     </extensions>
 
 </idea-plugin>
