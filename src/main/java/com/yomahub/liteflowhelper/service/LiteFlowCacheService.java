@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
 
 /**
  * 项目级别的服务，用于缓存 LiteFlow 的 Chains 和 Nodes 信息。
@@ -43,6 +44,10 @@ public final class LiteFlowCacheService {
         return Collections.unmodifiableList(cachedChains);
     }
 
+    public boolean containsCachedChain(String chainId) {
+        return cachedChains.stream().anyMatch(chainInfo -> chainInfo.getName().equals(chainId));
+    }
+
     /**
      * 获取缓存的 LiteFlowNodeInfo 列表。
      *
@@ -50,6 +55,10 @@ public final class LiteFlowCacheService {
      */
     public List<LiteFlowNodeInfo> getCachedNodes() {
         return Collections.unmodifiableList(cachedNodes);
+    }
+
+    public boolean containsCachedNode(String nodeId) {
+        return cachedNodes.stream().anyMatch(liteFlowNodeInfo -> liteFlowNodeInfo.getNodeId().equals(nodeId));
     }
 
     /**
