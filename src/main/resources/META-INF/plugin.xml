@@ -24,6 +24,12 @@
         <!-- 注册项目级服务 -->
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheService"/>
 
+        <!--
+         注册启动活动，用于在项目打开时预热缓存。
+         这解决了Annotator在工具窗口打开前无法获取数据的问题。
+        -->
+        <postStartupActivity implementation="com.yomahub.liteflowhelper.PluginStartupActivity"/>
+
         <toolWindow
                 id="LiteFlow Chain Window"
                 anchor="right"
