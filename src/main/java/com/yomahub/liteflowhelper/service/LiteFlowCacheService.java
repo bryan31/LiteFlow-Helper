@@ -43,6 +43,14 @@ public final class LiteFlowCacheService {
         return Collections.unmodifiableList(cachedChains);
     }
 
+    public boolean hasCachedChain(String chainId){
+        return cachedChains.stream().anyMatch(chainInfo -> chainInfo.getName().equals(chainId));
+    }
+
+    public boolean hasCachedNodes(String nodeId){
+        return cachedNodes.stream().anyMatch(liteFlowNodeInfo -> liteFlowNodeInfo.getNodeId().equals(nodeId));
+    }
+
     /**
      * 获取缓存的 LiteFlowNodeInfo 列表。
      *
