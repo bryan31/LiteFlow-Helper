@@ -63,6 +63,10 @@
         <!-- [ 新增 ] 注册编辑器监听器，用于实现括号匹配高亮 -->
         <editorFactoryListener implementation="com.yomahub.liteflowhelper.editor.LiteFlowEditorListener"/>
 
+        <!-- 新增: 注册用于Java代码的LineMarkerProvider -->
+        <codeInsight.lineMarkerProvider language="JAVA"
+                                        implementationClass="com.yomahub.liteflowhelper.marker.LiteFlowChainLineMarkerProvider"/>
+
     </extensions>
 
 </idea-plugin>
