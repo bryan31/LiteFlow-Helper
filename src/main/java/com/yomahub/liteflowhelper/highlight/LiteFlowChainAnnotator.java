@@ -4,7 +4,6 @@ import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
-import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
@@ -17,7 +16,6 @@ import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +35,9 @@ public class LiteFlowChainAnnotator implements Annotator {
 
     // 预编译的正则表达式，用于查找子变量定义 (e.g., "sub = THEN(a,b)")
     private static final Pattern SUB_VAR_PATTERN = Pattern.compile("\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*=");
+
+    // 用于查找所有单词（潜在的关键字或变量）的正则表达式
+    private static final Pattern WORD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b");
 
 
     @Override
@@ -65,30 +66,47 @@ public class LiteFlowChainAnnotator implements Annotator {
         // 获取缓存服务
         LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
 
-        // 1. 查找表达式中定义的子变量
+        // --- 步骤 1: 优先高亮EL关键字 ---
+        Matcher keywordMatcher = WORD_PATTERN.matcher(expressionText);
+        while (keywordMatcher.find()) {
+            String word = keywordMatcher.group(1);
+            if (LiteFlowXmlUtil.isElKeyword(word)) {
+                TextRange range = new TextRange(valueOffset + keywordMatcher.start(1), valueOffset + keywordMatcher.end(1));
+                holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                        .range(range)
+                        .textAttributes(LiteFlowHighlightColorSettings.EL_KEYWORD_KEY)
+                        .create();
+            }
+        }
+
+
+        // --- 步骤 2: 高亮组件、子流程和子变量 ---
+
+        // 查找表达式中定义的子变量
         Map<String, TextRange> subVariableDefs = findSubVariableDefinitions(expressionText, valueOffset);
 
-        // 2. 使用QLExpress获取所有外部变量
+        // 使用QLExpress获取所有外部变量
         String[] outVarNames;
         try {
             outVarNames = EXPRESS_RUNNER.getOutVarNames(expressionText);
         } catch (Exception e) {
-            // QLExpress解析失败，不进行高亮处理
+            // QLExpress解析失败，不进行后续高亮处理
             return;
         }
 
-        // 3. 遍历所有 QLExpress 识别出的变量，并进行高亮
+        // 遍历所有 QLExpress 识别出的变量，并进行高亮
         for (String varName : outVarNames) {
+            // EL关键字已经被步骤1处理过了，这里跳过以避免重复或错误的覆盖
+            if (LiteFlowXmlUtil.isElKeyword(varName)) {
+                continue;
+            }
+
             // 使用正则表达式查找当前变量在表达式中的所有出现位置
             // \\b 是单词边界，确保不会匹配到 "a" 在 "abc" 中
             Pattern varPattern = Pattern.compile("\\b" + Pattern.quote(varName) + "\\b");
             Matcher matcher = varPattern.matcher(expressionText);
 
             while (matcher.find()) {
-                // [修改] 调用 LiteFlowXmlUtil 中的公共方法判断关键字
-                if (LiteFlowXmlUtil.isElKeyword(varName)) {
-                    continue;
-                }
                 TextRange range = new TextRange(valueOffset + matcher.start(), valueOffset + matcher.end());
 
                 // 确定高亮类型

@@ -51,6 +51,11 @@
 
         <!-- ruleSource to File 跳转 Ctrl+左键 或 Ctrl+B-->
         <gotoDeclarationHandler order="first" implementation="com.yomahub.liteflowhelper.reference.config.RuleSourceToFileGotoDeclarationHandler" />
+
+        <!-- 新增: 注册 EL 关键字的代码补全功能 -->
+        <completion.contributor
+                language="XML"
+                implementationClass="com.yomahub.liteflowhelper.completion.LiteFlowElCompletionContributor"/>
     </extensions>
 
 </idea-plugin>

@@ -38,4 +38,10 @@ public class LiteFlowHighlightColorSettings {
             "LITEFLOW_UNKNOWN_COMPONENT",
             new TextAttributes(new Color(231, 127, 127), null, new Color(231, 127, 127), EffectType.WAVE_UNDERSCORE, Font.BOLD)
     );
+
+    // 新增: EL关键字的高亮: #f78b70, 加粗
+    public static final TextAttributesKey EL_KEYWORD_KEY = createTextAttributesKey(
+            "LITEFLOW_EL_KEYWORD",
+            new TextAttributes(new Color(0xf7, 0x8b, 0x70), null, null, null, Font.BOLD)
+    );
 }

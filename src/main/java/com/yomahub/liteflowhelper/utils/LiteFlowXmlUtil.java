@@ -69,6 +69,16 @@ public class LiteFlowXmlUtil {
         // [修改] 进行严格区分大小写的直接包含检查
         return EL_KEYWORDS.contains(text);
     }
+
+    /**
+     * 新增: 返回所有EL关键字的集合，用于代码补全。
+     *
+     * @return EL关键字集合
+     */
+    public static Set<String> getElKeywords() {
+        return EL_KEYWORDS;
+    }
+
     //</editor-fold>
 
     //<editor-fold desc="XML处理方法">
