@@ -3,9 +3,7 @@ package com.yomahub.liteflowhelper.utils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.xml.XmlDocument;
-import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import com.intellij.openapi.diagnostic.Logger;
@@ -328,6 +326,46 @@ public class LiteFlowXmlUtil {
             }
         }
         return null;
+    }
+
+    /**
+     * [新增方法]
+     * 判断一个XML属性值是否为LiteFlow的EL表达式。
+     * 主要用于限定括号匹配、代码补全等功能的生效范围。
+     *
+     * @param attributeValue 要检查的XML属性值
+     * @return 如果是EL表达式则返回true，否则返回false
+     */
+    public static boolean isChainEL(@Nullable XmlAttributeValue attributeValue) {
+        if (attributeValue == null) {
+            return false;
+        }
+        PsiElement attribute = attributeValue.getParent();
+        if (!(attribute instanceof XmlAttribute)) {
+            return false;
+        }
+        String attributeName = ((XmlAttribute) attribute).getName();
+
+        PsiElement tag = attribute.getParent();
+        if (!(tag instanceof XmlTag)) {
+            return false;
+        }
+        String tagName = ((XmlTag) tag).getName();
+
+        // 场景1: <chain value="...">
+        if ("chain".equals(tagName) && "value".equals(attributeName)) {
+            return true;
+        }
+
+        // 场景2: <node ... then="..." when="..." for="..." while="..." if="...">
+        if ("node".equals(tagName)) {
+            return "then".equals(attributeName) ||
+                    "when".equals(attributeName) ||
+                    "for".equals(attributeName) ||
+                    "while".equals(attributeName) ||
+                    "if".equals(attributeName);
+        }
+        return false;
     }
     //</editor-fold>
 }

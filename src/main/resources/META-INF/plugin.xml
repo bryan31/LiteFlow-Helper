@@ -56,6 +56,10 @@
         <completion.contributor
                 language="XML"
                 implementationClass="com.yomahub.liteflowhelper.completion.LiteFlowElCompletionContributor"/>
+
+        <!-- 新增: 注册 TypedHandler 用于括号自动补全 -->
+        <typedHandler implementation="com.yomahub.liteflowhelper.editor.LiteFlowTypedHandler"/>
+
     </extensions>
 
 </idea-plugin>
