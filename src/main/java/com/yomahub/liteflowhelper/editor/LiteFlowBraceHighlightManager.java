@@ -50,7 +50,9 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
      * @param editor 目标编辑器
      */
     public static void attachTo(@NotNull Editor editor) {
-        if (editor.getProject() == null) return;
+        if (editor.getProject() == null) {
+            return;
+        }
         // 确保每个编辑器只有一个此管理器的实例
         if (editor.getUserData(MANAGER_KEY) == null) {
             LiteFlowBraceHighlightManager manager = new LiteFlowBraceHighlightManager(editor);
@@ -177,7 +179,9 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
                 if (c == '(') {
                     stack.push(i);
                 } else if (c == ')') {
-                    if (stack.isEmpty()) return -1; // 不匹配
+                    if (stack.isEmpty()) {
+                        return -1; // 不匹配
+                    }
                     stack.pop();
                     if (stack.isEmpty()) {
                         return i; // 找到匹配
@@ -190,7 +194,9 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
                 if (c == ')') {
                     stack.push(i);
                 } else if (c == '(') {
-                    if (stack.isEmpty()) return -1; // 不匹配
+                    if (stack.isEmpty()) {
+                        return -1; // 不匹配
+                    }
                     stack.pop();
                     if (stack.isEmpty()) {
                         return i; // 找到匹配
