@@ -36,12 +36,24 @@ public class LiteFlowHighlightColorSettings {
     // 异常组件的高亮: #E77F7F, 加粗, 下波浪线
     public static final TextAttributesKey UNKNOWN_COMPONENT_KEY = createTextAttributesKey(
             "LITEFLOW_UNKNOWN_COMPONENT",
-            new TextAttributes(new Color(231, 127, 127), null, new Color(231, 127, 127), EffectType.WAVE_UNDERSCORE, Font.BOLD)
+            new TextAttributes(new Color(239, 67, 67), null, new Color(239, 67, 67), EffectType.WAVE_UNDERSCORE, Font.BOLD)
     );
 
     // 新增: EL关键字的高亮: #f78b70, 加粗
     public static final TextAttributesKey EL_KEYWORD_KEY = createTextAttributesKey(
             "LITEFLOW_EL_KEYWORD",
             new TextAttributes(new Color(0xf7, 0x8b, 0x70), null, null, null, Font.BOLD)
+    );
+
+    // [ 新增 ] 匹配括号的高亮: 橘黄色 (#FFA500), 带直角边框
+    public static final TextAttributesKey MATCHED_BRACE_KEY = createTextAttributesKey(
+            "LITEFLOW_MATCHED_BRACE",
+            new TextAttributes(
+                    new Color(0xFF, 0xA5, 0x00), // 前景色: 橘黄色
+                    null,                         // 背景色: null
+                    new Color(0xFF, 0xA5, 0x00), // 效果颜色: 橘黄色
+                    EffectType.BOXED,             // 效果类型: 直角边框
+                    Font.BOLD                     // 字体: 加粗
+            )
     );
 }

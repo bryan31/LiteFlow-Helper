@@ -60,6 +60,9 @@
         <!-- 新增: 注册 TypedHandler 用于括号自动补全 -->
         <typedHandler implementation="com.yomahub.liteflowhelper.editor.LiteFlowTypedHandler"/>
 
+        <!-- [ 新增 ] 注册编辑器监听器，用于实现括号匹配高亮 -->
+        <editorFactoryListener implementation="com.yomahub.liteflowhelper.editor.LiteFlowEditorListener"/>
+
     </extensions>
 
 </idea-plugin>
