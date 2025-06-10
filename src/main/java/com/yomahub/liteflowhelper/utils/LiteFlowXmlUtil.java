@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * LiteFlow PSI元素（包括XML和Java类）相关的工具类。
@@ -21,6 +23,20 @@ import java.util.Set;
 public class LiteFlowXmlUtil {
 
     private static final Logger LOG = Logger.getInstance(LiteFlowXmlUtil.class);
+
+    //<editor-fold desc="LiteFlow EL关键字">
+    /**
+     * LiteFlow的EL关键字集合
+     * 严格区分大小写
+     */
+    private static final Set<String> EL_KEYWORDS = Stream.of(
+            "THEN", "WHEN", "SER", "PAR", "SWITCH", "PRE", "FINALLY", "IF", "NODE",
+            "node", "FOR", "WHILE", "ITERATOR", "CATCH", "AND", "OR", "NOT", "ELSE",
+            "ELIF", "TO", "to", "DEFAULT", "tag", "any", "must", "id", "ignoreError",
+            "threadPool", "DO", "BREAK", "data", "maxWaitSeconds", "maxWaitMilliseconds",
+            "parallel", "retry", "bind"
+    ).collect(Collectors.toSet());
+    //</editor-fold>
 
     //<editor-fold desc="LiteFlow相关常量">
     public static final String LITEFLOW_COMPONENT_ANNOTATION = "com.yomahub.liteflow.annotation.LiteflowComponent";
@@ -36,6 +52,23 @@ public class LiteFlowXmlUtil {
     public static final Set<String> PROCESS_METHOD_TYPES = new HashSet<>(Arrays.asList(
             "PROCESS", "PROCESS_SWITCH", "PROCESS_BOOLEAN", "PROCESS_FOR", "PROCESS_ITERATOR"
     ));
+    //</editor-fold>
+
+    //<editor-fold desc="EL关键字判断">
+
+    /**
+     * 判断一个字符串是否是LiteFlow的EL关键字（大小写敏感）。
+     *
+     * @param text 要检查的文本
+     * @return 如果是关键字则返回 true，否则返回 false
+     */
+    public static boolean isElKeyword(@Nullable String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return false;
+        }
+        // [修改] 进行严格区分大小写的直接包含检查
+        return EL_KEYWORDS.contains(text);
+    }
     //</editor-fold>
 
     //<editor-fold desc="XML处理方法">

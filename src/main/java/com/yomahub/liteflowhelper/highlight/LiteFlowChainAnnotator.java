@@ -85,8 +85,8 @@ public class LiteFlowChainAnnotator implements Annotator {
             Matcher matcher = varPattern.matcher(expressionText);
 
             while (matcher.find()) {
-                // 跳过关键字
-                if (isKeyword(varName)) {
+                // [修改] 调用 LiteFlowXmlUtil 中的公共方法判断关键字
+                if (LiteFlowXmlUtil.isElKeyword(varName)) {
                     continue;
                 }
                 TextRange range = new TextRange(valueOffset + matcher.start(), valueOffset + matcher.end());
@@ -155,37 +155,5 @@ public class LiteFlowChainAnnotator implements Annotator {
             currentOffset += statement.length() + 1;
         }
         return defs;
-    }
-
-
-    // 简单判断是否为LiteFlow的EL关键字，避免被错误高亮
-    private boolean isKeyword(String text) {
-        switch (text.toUpperCase()) {
-            case "THEN":
-            case "WHEN":
-            case "SWITCH":
-            case "IF":
-            case "ELSE":
-            case "ELIF":
-            case "FOR":
-            case "WHILE":
-            case "BREAK":
-            case "ITERATOR":
-            case "CATCH":
-            case "DO":
-            case "TO":
-            case "DEFAULT":
-            case "AND":
-            case "OR":
-            case "NOT":
-            case "FINALLY":
-            case "PRE":
-            case "NODE":
-            case "TRUE":
-            case "FALSE":
-                return true;
-            default:
-                return false;
-        }
     }
 }

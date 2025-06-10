@@ -69,7 +69,8 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
                         int valueStartOffsetInTag = tagValue.getTextRange().getStartOffset() - xmlTag.getTextRange().getStartOffset();
 
                         for (String varName : varNames) {
-                            if (isKeyword(varName)) {
+                            // [修改] 调用 LiteFlowXmlUtil 中的公共方法判断关键字
+                            if (LiteFlowXmlUtil.isElKeyword(varName)) {
                                 continue;
                             }
 
@@ -86,19 +87,6 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
                         return references.toArray(new PsiReference[0]);
                     }
                 });
-    }
-
-    private boolean isKeyword(String text) {
-        switch (text.toUpperCase()) {
-            case "THEN": case "WHEN": case "SWITCH": case "IF": case "ELSE":
-            case "ELIF": case "FOR": case "WHILE": case "BREAK": case "ITERATOR":
-            case "CATCH": case "DO": case "TO": case "DEFAULT": case "AND":
-            case "OR": case "NOT": case "FINALLY": case "PRE": case "NODE":
-            case "TRUE": case "FALSE":
-                return true;
-            default:
-                return false;
-        }
     }
 
     public static class LiteFlowElementReference extends PsiReferenceBase<PsiElement> {
