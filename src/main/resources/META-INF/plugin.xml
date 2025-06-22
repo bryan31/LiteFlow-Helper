@@ -20,6 +20,10 @@
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
     <depends>com.intellij.properties</depends>
+    <!-- 为脚本高亮功能添加的可选插件依赖。用户未安装这些插件时，插件本身仍可正常运行，只是对应脚本语言无法高亮 -->
+    <depends optional="true">org.jetbrains.plugins.groovy</depends>
+    <depends optional="true">com.intellij.modules.python</depends>
+    <depends optional="true">org.jetbrains.kotlin</depends>
 
     <!-- 右侧窗口 -->
     <extensions defaultExtensionNs="com.intellij">
@@ -67,6 +71,8 @@
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="com.yomahub.liteflowhelper.marker.LiteFlowChainLineMarkerProvider"/>
 
+        <!-- ===== 新增的语言注入器，用于脚本高亮 ===== -->
+        <languageInjector implementation="com.yomahub.liteflowhelper.injection.LiteFlowScriptInjector"/>
     </extensions>
 
 </idea-plugin>
