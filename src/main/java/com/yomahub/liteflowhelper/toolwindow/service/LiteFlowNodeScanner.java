@@ -21,6 +21,8 @@ import org.apache.commons.collections.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * 负责扫描项目中的 LiteFlow 节点定义。
@@ -33,11 +35,11 @@ public class LiteFlowNodeScanner {
 
     // LiteFlow核心节点组件的基类，用于查找它们的子类 (继承式)
     private static final String[] LITEFLOW_BASE_CLASSES = {
-            LiteFlowXmlUtil.NODE_COMPONENT_CLASS,
             "com.yomahub.liteflow.core.NodeSwitchComponent",
             "com.yomahub.liteflow.core.NodeBooleanComponent",
             "com.yomahub.liteflow.core.NodeForComponent",
-            "com.yomahub.liteflow.core.NodeIteratorComponent"
+            "com.yomahub.liteflow.core.NodeIteratorComponent",
+            LiteFlowXmlUtil.NODE_COMPONENT_CLASS
     };
 
     /**
@@ -65,6 +67,8 @@ public class LiteFlowNodeScanner {
             nodeInfos.addAll(findXmlScriptNodes(project));
             nodeInfos.addAll(findDeclarativeClassNodes(project));
             nodeInfos.addAll(findDeclarativeMethodNodes(project));
+
+            nodeInfos.sort(Comparator.comparing(LiteFlowNodeInfo::getNodeId));
             return nodeInfos;
         });
     }
@@ -103,7 +107,12 @@ public class LiteFlowNodeScanner {
                         }
 
                         NodeType nodeType = determineNodeTypeFromSuperClass(baseClassName);
-                        javaNodeInfos.add(new LiteFlowNodeInfo(primaryId, nodeName, nodeType, inheritor, "继承式"));
+
+                        boolean flag = javaNodeInfos.stream().anyMatch(liteFlowNodeInfo -> liteFlowNodeInfo.getNodeName().equals(nodeName));
+                        if (!flag) {
+                            javaNodeInfos.add(new LiteFlowNodeInfo(primaryId, nodeName, nodeType, inheritor, "继承式"));
+                        }
+
                     }
                 }
             }

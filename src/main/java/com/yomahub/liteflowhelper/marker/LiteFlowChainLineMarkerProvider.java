@@ -49,7 +49,7 @@ public class LiteFlowChainLineMarkerProvider implements LineMarkerProvider {
 
         // 检查方法名
         String methodName = resolvedMethod.getName();
-        if (!methodName.startsWith("execute") || "executeRouteChain".equals(methodName)) {
+        if (!methodName.startsWith("execute")) {
             return null;
         }
 
@@ -59,24 +59,26 @@ public class LiteFlowChainLineMarkerProvider implements LineMarkerProvider {
             return null;
         }
 
-        // 获取参数列表，检查第一个参数是否是字符串字面量
+        // 获取参数列表，检查第一个参数
         PsiExpression[] args = callExpr.getArgumentList().getExpressions();
         if (args.length == 0) {
             return null;
         }
 
         String chainId;
-        // 只处理字符串字面量的情况
-        if (args[0] instanceof PsiLiteralExpression literalExpression) {
-            Object value = literalExpression.getValue();
-            if (value instanceof String) {
-                chainId = (String) value;
-            } else {
-                chainId = null;
-            }
+        PsiExpression chainIdExpr = args[0];
+
+        // [重要改动] 使用常量求值帮助器来获取表达式的值
+        // 这能同时处理字符串字面量和指向常量的变量
+        PsiConstantEvaluationHelper evalHelper = JavaPsiFacade.getInstance(element.getProject()).getConstantEvaluationHelper();
+        Object constantValue = evalHelper.computeConstantExpression(chainIdExpr);
+
+        if (constantValue instanceof String) {
+            chainId = (String) constantValue;
         } else {
             chainId = null;
         }
+
 
         if (chainId == null || chainId.isEmpty()) {
             return null;

@@ -13,13 +13,11 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.yomahub.liteflowhelper.toolwindow.model.ChainInfo;
+import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import com.intellij.openapi.diagnostic.Logger; // 可选：用于日志记录
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * 负责扫描项目中的 LiteFlow Chain (流程链) 定义。
@@ -99,6 +97,7 @@ public class LiteFlowChainScanner {
                     }
                 }
             }
+            chainInfos.sort(Comparator.comparing(ChainInfo::getName));
             return chainInfos;
         });
     }

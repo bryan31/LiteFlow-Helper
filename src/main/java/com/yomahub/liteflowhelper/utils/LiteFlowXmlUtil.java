@@ -4,6 +4,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.*;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import com.intellij.openapi.diagnostic.Logger;
@@ -264,6 +265,9 @@ public class LiteFlowXmlUtil {
         PsiAnnotation liteflowAnnotation = psiClass.getAnnotation(LITEFLOW_COMPONENT_ANNOTATION);
         if (liteflowAnnotation != null) {
             String nodeId = getAnnotationAttributeValue(liteflowAnnotation, "value");
+            if (StringUtils.isBlank(nodeId)) {
+                nodeId = getAnnotationAttributeValue(liteflowAnnotation, "id");
+            }
             if (nodeId != null && !nodeId.trim().isEmpty()) {
                 return nodeId;
             }
