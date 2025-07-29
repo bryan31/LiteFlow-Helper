@@ -15,6 +15,7 @@ import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -39,6 +40,8 @@ public class LiteFlowChainAnnotator implements Annotator {
     // 用于查找所有单词（潜在的关键字或变量）的正则表达式
     private static final Pattern WORD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b");
 
+    // [ 新增 ] 用于查找所有 /** ... **/ 类型注释的正则表达式
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("/\\*\\*.*?\\*\\*/", Pattern.DOTALL);
 
     @Override
     public void annotate(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
@@ -66,8 +69,43 @@ public class LiteFlowChainAnnotator implements Annotator {
         // 获取缓存服务
         LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
 
+        // --- [ 新增/修改 ] 步骤 0: 处理注释并创建屏蔽后的表达式 ---
+        StringBuilder maskedExpressionBuilder = new StringBuilder(expressionText);
+        Matcher commentMatcher = COMMENT_PATTERN.matcher(expressionText);
+        boolean hasError = false;
+
+        // 第一次遍历: 高亮注释并用空格屏蔽它们
+        while(commentMatcher.find()){
+            int start = commentMatcher.start();
+            int end = commentMatcher.end();
+            TextRange range = new TextRange(valueOffset + start, valueOffset + end);
+
+            // 对注释本身进行高亮
+            holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                    .range(range)
+                    .textAttributes(LiteFlowHighlightColorSettings.EL_COMMENT_KEY)
+                    .create();
+
+            // 在屏蔽版本的表达式中，用等长的空格替换注释
+            for (int i = start; i < end; i++) {
+                maskedExpressionBuilder.setCharAt(i, ' ');
+            }
+        }
+
+        // 检查原始带注释的表达式是否有语法错误
+        String[] originalVarNames = null;
+        try {
+            originalVarNames = EXPRESS_RUNNER.getOutVarNames(expressionText);
+        } catch (Exception e) {
+            // 解析原始字符串失败，可能存在非法注释
+            hasError = true;
+        }
+
+        String maskedExpressionText = maskedExpressionBuilder.toString();
+
         // --- 步骤 1: 优先高亮EL关键字 ---
-        Matcher keywordMatcher = WORD_PATTERN.matcher(expressionText);
+        // 在屏蔽后的文本上进行匹配
+        Matcher keywordMatcher = WORD_PATTERN.matcher(maskedExpressionText);
         while (keywordMatcher.find()) {
             String word = keywordMatcher.group(1);
             if (LiteFlowXmlUtil.isElKeyword(word)) {
@@ -82,17 +120,25 @@ public class LiteFlowChainAnnotator implements Annotator {
 
         // --- 步骤 2: 高亮组件、子流程和子变量 ---
 
-        // 查找表达式中定义的子变量
-        Map<String, TextRange> subVariableDefs = findSubVariableDefinitions(expressionText, valueOffset);
+        // 查找表达式中定义的子变量 (在屏蔽后文本上)
+        Map<String, TextRange> subVariableDefs = findSubVariableDefinitions(maskedExpressionText, valueOffset);
 
-        // 使用QLExpress获取所有外部变量
+        // 使用QLExpress获取所有外部变量 (在屏蔽后文本上)
         String[] outVarNames;
         try {
-            outVarNames = EXPRESS_RUNNER.getOutVarNames(expressionText);
+            outVarNames = EXPRESS_RUNNER.getOutVarNames(maskedExpressionText);
         } catch (Exception e) {
-            // QLExpress解析失败，不进行后续高亮处理
+            // 如果连屏蔽后的文本都解析失败，说明有其他语法错误，直接返回
+            // 但如果原始文本解析失败而屏蔽后成功，说明错误很可能在注释上
+            if (hasError) {
+                TextRange errorRange = value.getTextRange();
+                holder.newAnnotation(HighlightSeverity.ERROR, "LiteFlow EL 表达式可能存在语法错误，或注释位置不合法")
+                        .range(errorRange)
+                        .create();
+            }
             return;
         }
+
 
         // 遍历所有 QLExpress 识别出的变量，并进行高亮
         for (String varName : outVarNames) {
@@ -101,12 +147,13 @@ public class LiteFlowChainAnnotator implements Annotator {
                 continue;
             }
 
-            // 使用正则表达式查找当前变量在表达式中的所有出现位置
+            // 使用正则表达式查找当前变量在屏蔽后表达式中的所有出现位置
             // \\b 是单词边界，确保不会匹配到 "a" 在 "abc" 中
             Pattern varPattern = Pattern.compile("\\b" + Pattern.quote(varName) + "\\b");
-            Matcher matcher = varPattern.matcher(expressionText);
+            Matcher matcher = varPattern.matcher(maskedExpressionText);
 
             while (matcher.find()) {
+                // 因为偏移量一致，所以可以直接用匹配到的范围
                 TextRange range = new TextRange(valueOffset + matcher.start(), valueOffset + matcher.end());
 
                 // 确定高亮类型
@@ -158,6 +205,10 @@ public class LiteFlowChainAnnotator implements Annotator {
             // 如果语句包含 "="，则认为是定义
             if (matcher.find()) {
                 String varName = matcher.group(1);
+                // 跳过空字符串的 varName
+                if(varName == null || varName.trim().isEmpty()){
+                    continue;
+                }
                 int varStartInStatement = matcher.start(1);
                 int varEndInStatement = matcher.end(1);
 

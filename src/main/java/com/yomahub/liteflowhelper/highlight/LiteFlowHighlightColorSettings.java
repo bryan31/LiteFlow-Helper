@@ -56,4 +56,10 @@ public class LiteFlowHighlightColorSettings {
                     Font.BOLD                     // 字体: 加粗
             )
     );
+
+    // [ 新增 ] EL 注释的高亮: 灰色, 斜体
+    public static final TextAttributesKey EL_COMMENT_KEY = createTextAttributesKey(
+            "LITEFLOW_EL_COMMENT",
+            new TextAttributes(new Color(0x80, 0x80, 0x80), null, null, null, Font.ITALIC)
+    );
 }
