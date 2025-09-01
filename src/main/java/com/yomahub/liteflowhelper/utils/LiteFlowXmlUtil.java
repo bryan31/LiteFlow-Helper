@@ -33,7 +33,7 @@ public class LiteFlowXmlUtil {
             "node", "FOR", "WHILE", "ITERATOR", "CATCH", "AND", "OR", "NOT", "ELSE",
             "ELIF", "TO", "to", "DEFAULT", "tag", "any", "must", "id", "ignoreError",
             "threadPool", "DO", "BREAK", "data", "maxWaitSeconds", "maxWaitMilliseconds",
-            "parallel", "retry", "bind"
+            "parallel", "retry", "bind","percentage"
     ).collect(Collectors.toSet());
     //</editor-fold>
 

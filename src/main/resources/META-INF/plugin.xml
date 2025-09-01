@@ -32,6 +32,8 @@
 
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.FileService"/>
 
+        <postStartupActivity implementation="com.yomahub.liteflowhelper.startup.ProjectOpenActivity"/>
+
         <toolWindow
                 id="LiteFlow Chain Window"
                 anchor="right"
