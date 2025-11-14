@@ -35,9 +35,11 @@ public class LiteFlowChainScanner {
         // 检查项目是否处于 "dumb mode" (正在索引)。
         // 如果是，则推迟扫描，避免 IndexNotReadyException。
         if (DumbService.getInstance(project).isDumb()) {
-            LOG.info("项目正处于 dumb mode。LiteFlow chain 扫描已推迟。"); // 可选日志
+            LOG.info("项目正处于 dumb mode。LiteFlow chain 扫描已推迟。");
             return Collections.emptyList();
         }
+
+        LOG.info("========== 开始扫描 LiteFlow Chains ==========");
 
         // PSI访问需要在读操作中进行。
         return ApplicationManager.getApplication().runReadAction((Computable<List<ChainInfo>>) () -> {
@@ -51,11 +53,14 @@ public class LiteFlowChainScanner {
             }
 
             List<ChainInfo> chainInfos = new ArrayList<>();
-            // FileTypeIndex.getFiles 在 dumb mode 下对于“最新”结果应该是安全的，
+            // FileTypeIndex.getFiles 在 dumb mode 下对于"最新"结果应该是安全的，
             // 但后续的PSI操作（如解析标签）可能不是。
             // 总体的 dumb mode 检查是主要的防护。
             Collection<VirtualFile> virtualFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, GlobalSearchScope.projectScope(project));
             PsiManager psiManager = PsiManager.getInstance(project);
+
+            LOG.info("找到 " + virtualFiles.size() + " 个 XML 文件");
+            int liteFlowXmlCount = 0;
 
             for (VirtualFile virtualFile : virtualFiles) {
                 if (project.isDisposed()) {
@@ -66,6 +71,7 @@ public class LiteFlowChainScanner {
                     XmlFile xmlFile = (XmlFile) psiFile;
                     // [核心修改] 先使用 isLiteFlowXml 进行判断
                     if (LiteFlowXmlUtil.isLiteFlowXml(xmlFile)) {
+                        liteFlowXmlCount++;
                         // 判断通过后，可以安全地获取根标签进行处理
                         XmlTag flowRootTag = xmlFile.getDocument().getRootTag();
                         if (flowRootTag == null) {
@@ -97,6 +103,9 @@ public class LiteFlowChainScanner {
                     }
                 }
             }
+
+            LOG.info("其中 " + liteFlowXmlCount + " 个是 LiteFlow XML 配置文件");
+            LOG.info("========== 扫描完成，共找到 " + chainInfos.size() + " 个 chains ==========");
             chainInfos.sort(Comparator.comparing(ChainInfo::getName));
             return chainInfos;
         });
