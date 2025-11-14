@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbService; // 导入DumbService
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
@@ -59,7 +60,8 @@ public class LiteFlowChainScanner {
             Collection<VirtualFile> virtualFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, GlobalSearchScope.projectScope(project));
             PsiManager psiManager = PsiManager.getInstance(project);
 
-            LOG.info("找到 " + virtualFiles.size() + " 个 XML 文件");
+            // [优化] 调整为debug级别，减少生产环境日志噪音
+            LOG.debug("找到 " + virtualFiles.size() + " 个 XML 文件");
             int liteFlowXmlCount = 0;
 
             for (VirtualFile virtualFile : virtualFiles) {
@@ -88,14 +90,15 @@ public class LiteFlowChainScanner {
                             String chainName = chainTag.getAttributeValue("name"); // LiteFlow 中 chain 更常用 'name' 属性
                             String finalName = null;
 
+                            // [优化] 使用 StringUtil 统一空值检查
                             // 优先使用 chain 的 'name' 属性作为显示名称，这是LiteFlow中更常见的做法
-                            if (chainName != null && !chainName.trim().isEmpty()) {
+                            if (!StringUtil.isEmpty(chainName)) {
                                 finalName = chainName;
-                            } else if (chainId != null && !chainId.trim().isEmpty()) {
+                            } else if (!StringUtil.isEmpty(chainId)) {
                                 finalName = chainId; // 如果 'name' 属性不存在，则使用 'id'
                             }
 
-                            if (finalName != null) {
+                            if (!StringUtil.isEmpty(finalName)) {
                                 int offset = chainTag.getTextOffset(); // 获取标签在文件中的偏移量，用于导航
                                 chainInfos.add(new ChainInfo(finalName, xmlFile, offset));
                             }
@@ -104,7 +107,8 @@ public class LiteFlowChainScanner {
                 }
             }
 
-            LOG.info("其中 " + liteFlowXmlCount + " 个是 LiteFlow XML 配置文件");
+            // [优化] 调整为debug级别
+            LOG.debug("其中 " + liteFlowXmlCount + " 个是 LiteFlow XML 配置文件");
             LOG.info("========== 扫描完成，共找到 " + chainInfos.size() + " 个 chains ==========");
             chainInfos.sort(Comparator.comparing(ChainInfo::getName));
             return chainInfos;

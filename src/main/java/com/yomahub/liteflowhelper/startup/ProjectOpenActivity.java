@@ -30,6 +30,10 @@ import java.util.List;
 public class ProjectOpenActivity implements StartupActivity.DumbAware {
     private static final Logger LOG = Logger.getInstance(ProjectOpenActivity.class);
 
+    // [优化] 提取魔法数字为常量
+    private static final int MAX_RETRY_COUNT = 2;
+    private static final long BASE_RETRY_DELAY_MS = 3000L;
+
     @Override
     public void runActivity(@NotNull Project project) {
         // 注册文件变化监听器
@@ -100,9 +104,9 @@ public class ProjectOpenActivity implements StartupActivity.DumbAware {
                 }
 
                 // 如果扫描结果为空且重试次数未达上限，则延迟后重试
-                if (foundChains.isEmpty() && foundNodes.isEmpty() && retryCount < 2) {
+                if (foundChains.isEmpty() && foundNodes.isEmpty() && retryCount < MAX_RETRY_COUNT) {
                     int nextRetryCount = retryCount + 1;
-                    long delayMs = 3000L * nextRetryCount; // 第1次重试延迟3秒，第2次重试延迟6秒
+                    long delayMs = BASE_RETRY_DELAY_MS * nextRetryCount; // 第1次重试延迟3秒，第2次重试延迟6秒
                     LOG.warn("扫描结果为空（第 " + (retryCount + 1) + " 次尝试），将在 " + delayMs + "ms 后重试");
 
                     // 使用 Alarm 来调度延迟任务
@@ -138,9 +142,9 @@ public class ProjectOpenActivity implements StartupActivity.DumbAware {
                 LOG.error("预加载 LiteFlow 数据时发生错误", error);
 
                 // 发生错误时，如果还有重试机会，也尝试重试
-                if (retryCount < 2 && !project.isDisposed()) {
+                if (retryCount < MAX_RETRY_COUNT && !project.isDisposed()) {
                     int nextRetryCount = retryCount + 1;
-                    LOG.info("将在 3 秒后重试（第 " + (nextRetryCount + 1) + " 次尝试）");
+                    LOG.info("将在 " + BASE_RETRY_DELAY_MS + " 毫秒后重试（第 " + (nextRetryCount + 1) + " 次尝试）");
 
                     Alarm alarm = new Alarm();
                     alarm.addRequest(() -> {
@@ -150,7 +154,7 @@ public class ProjectOpenActivity implements StartupActivity.DumbAware {
                             });
                         }
                         alarm.dispose();
-                    }, 3000);
+                    }, (int) BASE_RETRY_DELAY_MS);
                 }
             }
         };

@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.search.FileTypeIndex;
@@ -98,7 +99,8 @@ public class LiteFlowNodeScanner {
         GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
         GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
 
-        LOG.info("开始扫描继承式组件，基类列表: " + String.join(", ", LITEFLOW_BASE_CLASSES));
+        // [优化] 调整为debug级别
+        LOG.debug("开始扫描继承式组件，基类列表: " + String.join(", ", LITEFLOW_BASE_CLASSES));
 
         for (String baseClassName : LITEFLOW_BASE_CLASSES) {
             if (project.isDisposed()) {
@@ -111,9 +113,9 @@ public class LiteFlowNodeScanner {
                 continue;
             }
 
-            LOG.info("正在查找 " + baseClassName + " 的子类...");
+            LOG.debug("正在查找 " + baseClassName + " 的子类...");
             Collection<PsiClass> inheritors = ClassInheritorsSearch.search(baseClass, projectScope, true).findAll();
-            LOG.info("找到 " + inheritors.size() + " 个 " + baseClassName + " 的子类");
+            LOG.debug("找到 " + inheritors.size() + " 个 " + baseClassName + " 的子类");
 
             for (PsiClass inheritor : inheritors) {
                 if (project.isDisposed()) {
@@ -128,7 +130,8 @@ public class LiteFlowNodeScanner {
                     String nodeName = inheritor.getName();
                     String primaryId = nodeIdFromAnnotation != null ? nodeIdFromAnnotation : LiteFlowXmlUtil.convertClassNameToCamelCase(nodeName);
 
-                    if (primaryId == null || primaryId.trim().isEmpty()) {
+                    // [优化] 使用 StringUtil 统一空值检查
+                    if (StringUtil.isEmpty(primaryId)) {
                         LOG.warn("跳过继承式组件，无法确定Node ID: " + inheritor.getQualifiedName());
                         continue;
                     }
@@ -138,7 +141,8 @@ public class LiteFlowNodeScanner {
                     boolean flag = javaNodeInfos.stream().anyMatch(liteFlowNodeInfo -> liteFlowNodeInfo.getNodeName().equals(nodeName));
                     if (!flag) {
                         javaNodeInfos.add(new LiteFlowNodeInfo(primaryId, nodeName, nodeType, inheritor, "继承式"));
-                        LOG.info("找到继承式组件: " + primaryId + " (" + nodeName + ")");
+                        // [优化] 调整为debug级别
+                        LOG.debug("找到继承式组件: " + primaryId + " (" + nodeName + ")");
                     } else {
                         LOG.debug("跳过重复组件: " + nodeName);
                     }
@@ -148,8 +152,43 @@ public class LiteFlowNodeScanner {
             }
         }
 
-        LOG.info("继承式组件扫描完成，共找到 " + javaNodeInfos.size() + " 个组件");
+        LOG.debug("继承式组件扫描完成，共找到 " + javaNodeInfos.size() + " 个组件");
         return javaNodeInfos;
+    }
+
+    /**
+     * [重构] 提取公共方法：查找所有带有组件注解的候选类
+     */
+    private Set<PsiClass> findCandidateComponentClasses(@NotNull Project project) {
+        JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
+        GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
+        GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
+
+        Set<PsiClass> candidates = new HashSet<>();
+
+        // 查找 @LiteflowComponent 注解的类
+        PsiClass liteflowAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.LITEFLOW_COMPONENT_ANNOTATION, allScope);
+        if (liteflowAnnotation != null) {
+            Collection<PsiClass> lfComponents = AnnotatedElementsSearch.searchPsiClasses(liteflowAnnotation, projectScope).findAll();
+            candidates.addAll(lfComponents);
+            // [优化] 调整为debug级别
+            LOG.debug("找到 " + lfComponents.size() + " 个 @LiteflowComponent 标注的类");
+        } else {
+            LOG.warn("未找到 @LiteflowComponent 注解类，可能是 LiteFlow 依赖未正确加载");
+        }
+
+        // 查找 @Component 注解的类
+        PsiClass springAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.SPRING_COMPONENT_ANNOTATION, allScope);
+        if (springAnnotation != null) {
+            Collection<PsiClass> springComponents = AnnotatedElementsSearch.searchPsiClasses(springAnnotation, projectScope).findAll();
+            candidates.addAll(springComponents);
+            // [优化] 调整为debug级别
+            LOG.debug("找到 " + springComponents.size() + " 个 @Component 标注的类");
+        } else {
+            LOG.warn("未找到 @Component 注解类");
+        }
+
+        return candidates;
     }
 
     /**
@@ -157,38 +196,19 @@ public class LiteFlowNodeScanner {
      */
     private List<LiteFlowNodeInfo> findDeclarativeClassNodes(@NotNull Project project) {
         List<LiteFlowNodeInfo> declarativeNodeInfos = new ArrayList<>();
-        JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
-        GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
-        GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
 
         LOG.info("开始扫描声明式类组件...");
 
-        // 查找所有被 @LiteflowComponent 或 @Component 标注的类
-        Set<PsiClass> matchedClasses = new HashSet<>();
-        PsiClass liteflowComponentAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.LITEFLOW_COMPONENT_ANNOTATION, allScope);
-        if (liteflowComponentAnnotation != null){
-            Collection<PsiClass> lfComponents = AnnotatedElementsSearch.searchPsiClasses(liteflowComponentAnnotation, projectScope).findAll();
-            matchedClasses.addAll(lfComponents);
-            LOG.info("找到 " + lfComponents.size() + " 个 @LiteflowComponent 标注的类");
-        } else {
-            LOG.warn("未找到 @LiteflowComponent 注解类，可能是 LiteFlow 依赖未正确加载");
-        }
-
-        PsiClass springComponentAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.SPRING_COMPONENT_ANNOTATION, allScope);
-        if (springComponentAnnotation != null){
-            Collection<PsiClass> springComponents = AnnotatedElementsSearch.searchPsiClasses(springComponentAnnotation, projectScope).findAll();
-            matchedClasses.addAll(springComponents);
-            LOG.info("找到 " + springComponents.size() + " 个 @Component 标注的类");
-        } else {
-            LOG.warn("未找到 @Component 注解类");
-        }
+        // [重构] 使用提取的公共方法获取候选类
+        Set<PsiClass> matchedClasses = findCandidateComponentClasses(project);
 
         if (CollectionUtils.isEmpty(matchedClasses)){
             LOG.warn("未找到任何带组件注解的类");
             return Collections.emptyList();
         }
 
-        LOG.info("共找到 " + matchedClasses.size() + " 个候选组件类，开始筛选声明式类组件...");
+        // [优化] 调整为debug级别
+        LOG.debug("共找到 " + matchedClasses.size() + " 个候选组件类，开始筛选声明式类组件...");
 
         for (PsiClass psiClass : matchedClasses) {
             if (project.isDisposed()) {
@@ -204,7 +224,8 @@ public class LiteFlowNodeScanner {
                     nodeId = LiteFlowXmlUtil.convertClassNameToCamelCase(psiClass.getName());
                 }
 
-                if (nodeId == null || nodeId.trim().isEmpty()) {
+                // [优化] 使用 StringUtil 统一空值检查
+                if (StringUtil.isEmpty(nodeId)) {
                     LOG.warn("跳过声明式类组件，无法确定Node ID: " + psiClass.getQualifiedName());
                     continue;
                 }
@@ -225,13 +246,14 @@ public class LiteFlowNodeScanner {
                 NodeType nodeType = NodeType.fromDeclarativeNodeType(nodeTypeStr);
                 String nodeName = psiClass.getName();
                 declarativeNodeInfos.add(new LiteFlowNodeInfo(nodeId, nodeName, nodeType, psiClass, "类声明式"));
-                LOG.info("找到声明式类组件: " + nodeId + " (" + nodeName + ")");
+                // [优化] 调整为debug级别
+                LOG.debug("找到声明式类组件: " + nodeId + " (" + nodeName + ")");
             } else {
                 LOG.debug("类 " + psiClass.getName() + " 不符合声明式类组件条件");
             }
         }
 
-        LOG.info("声明式类组件扫描完成，共找到 " + declarativeNodeInfos.size() + " 个组件");
+        LOG.debug("声明式类组件扫描完成，共找到 " + declarativeNodeInfos.size() + " 个组件");
         return declarativeNodeInfos;
     }
 
@@ -240,20 +262,9 @@ public class LiteFlowNodeScanner {
      */
     private List<LiteFlowNodeInfo> findDeclarativeMethodNodes(@NotNull Project project) {
         List<LiteFlowNodeInfo> nodeInfos = new ArrayList<>();
-        JavaPsiFacade javaPsiFacade = JavaPsiFacade.getInstance(project);
-        GlobalSearchScope projectScope = GlobalSearchScope.projectScope(project);
-        GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
 
-        // 查找所有可能是组件容器的候选类
-        Set<PsiClass> candidateClasses = new HashSet<>();
-        PsiClass liteflowComponentAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.LITEFLOW_COMPONENT_ANNOTATION, allScope);
-        if (liteflowComponentAnnotation != null) {
-            candidateClasses.addAll(AnnotatedElementsSearch.searchPsiClasses(liteflowComponentAnnotation, projectScope).findAll());
-        }
-        PsiClass springComponentAnnotation = javaPsiFacade.findClass(LiteFlowXmlUtil.SPRING_COMPONENT_ANNOTATION, allScope);
-        if (springComponentAnnotation != null) {
-            candidateClasses.addAll(AnnotatedElementsSearch.searchPsiClasses(springComponentAnnotation, projectScope).findAll());
-        }
+        // [重构] 使用提取的公共方法获取候选类
+        Set<PsiClass> candidateClasses = findCandidateComponentClasses(project);
 
         if (candidateClasses.isEmpty()) {
             return Collections.emptyList();
@@ -346,7 +357,8 @@ public class LiteFlowNodeScanner {
                             String xmlName = nodeTag.getAttributeValue("name");
                             String typeAttr = nodeTag.getAttributeValue("type");
 
-                            if (xmlId == null || xmlId.trim().isEmpty()) {
+                            // [优化] 使用 StringUtil 统一空值检查
+                            if (StringUtil.isEmpty(xmlId)) {
                                 LOG.warn("跳过XML节点，缺少'id'属性: " + nodeTag.getName() + " in " + xmlFile.getName());
                                 continue;
                             }

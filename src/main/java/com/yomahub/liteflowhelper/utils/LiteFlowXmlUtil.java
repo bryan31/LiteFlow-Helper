@@ -1,10 +1,10 @@
 package com.yomahub.liteflowhelper.utils;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.*;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import com.intellij.openapi.diagnostic.Logger;
@@ -57,15 +57,16 @@ public class LiteFlowXmlUtil {
 
     /**
      * 判断一个字符串是否是LiteFlow的EL关键字（大小写敏感）。
+     * [优化] 使用 IntelliJ 平台自带的 StringUtil 统一空值检查
      *
      * @param text 要检查的文本
      * @return 如果是关键字则返回 true，否则返回 false
      */
     public static boolean isElKeyword(@Nullable String text) {
-        if (text == null || text.trim().isEmpty()) {
+        if (StringUtil.isEmpty(text)) {
             return false;
         }
-        // [修改] 进行严格区分大小写的直接包含检查
+        // 进行严格区分大小写的直接包含检查
         return EL_KEYWORDS.contains(text);
     }
 
@@ -259,16 +260,17 @@ public class LiteFlowXmlUtil {
     /**
      * 从 @LiteflowComponent 或 @Component 注解中提取节点ID。
      * 优先使用 @LiteflowComponent("value")，其次是 @Component("value")。
+     * [优化] 使用 StringUtil 统一空值检查
      */
     @Nullable
     public static String getNodeIdFromComponentAnnotations(@NotNull PsiClass psiClass) {
         PsiAnnotation liteflowAnnotation = psiClass.getAnnotation(LITEFLOW_COMPONENT_ANNOTATION);
         if (liteflowAnnotation != null) {
             String nodeId = getAnnotationAttributeValue(liteflowAnnotation, "value");
-            if (StringUtils.isBlank(nodeId)) {
+            if (StringUtil.isEmpty(nodeId)) {
                 nodeId = getAnnotationAttributeValue(liteflowAnnotation, "id");
             }
-            if (nodeId != null && !nodeId.trim().isEmpty()) {
+            if (!StringUtil.isEmpty(nodeId)) {
                 return nodeId;
             }
         }
@@ -276,7 +278,7 @@ public class LiteFlowXmlUtil {
         PsiAnnotation springAnnotation = psiClass.getAnnotation(SPRING_COMPONENT_ANNOTATION);
         if (springAnnotation != null) {
             String nodeId = getAnnotationAttributeValue(springAnnotation, "value");
-            if (nodeId != null && !nodeId.trim().isEmpty()) {
+            if (!StringUtil.isEmpty(nodeId)) {
                 return nodeId;
             }
         }

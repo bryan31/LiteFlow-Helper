@@ -41,14 +41,14 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.stream.Collectors;
+import com.intellij.util.Alarm;
 
 /**
  * LiteFlow Helper 工具窗口的工厂类。
  * [缓存重构] 负责创建工具窗口的UI内容、初始化扫描服务、处理用户交互以及管理数据刷新。
  * 所有的扫描操作现在都在后台任务中运行，并且扫描结果会被缓存到 LiteFlowCacheService 中。
+ * [性能优化] 使用 Alarm 替代 Timer，更好地集成到 IntelliJ 平台生命周期管理。
  */
 public class ChainWindowFactory implements ToolWindowFactory {
     private static final Logger LOG = Logger.getInstance(ChainWindowFactory.class);
@@ -64,7 +64,8 @@ public class ChainWindowFactory implements ToolWindowFactory {
     private LiteFlowChainScanner chainScanner;
     private LiteFlowNodeScanner nodeScanner;
 
-    private Timer autoRefreshTimer;
+    // [性能优化] 使用 Alarm 替代 Timer，自动绑定到 Disposable 生命周期
+    private Alarm autoRefreshAlarm;
     private static final long AUTO_REFRESH_INTERVAL = 30 * 1000;
 
     private SearchTextField searchTextField;
@@ -193,9 +194,7 @@ public class ChainWindowFactory implements ToolWindowFactory {
                 filterTree(); // 直接用缓存数据填充UI
             }
         }
-        startAutoRefreshTimer();
-
-        Disposer.register(toolWindow.getDisposable(), this::stopAutoRefreshTimer);
+        startAutoRefreshTimer(toolWindow);
     }
 
     /**
@@ -234,32 +233,41 @@ public class ChainWindowFactory implements ToolWindowFactory {
         tree.expandPath(new TreePath(liteflowNodesRootNode.getPath()));
     }
 
-    private void startAutoRefreshTimer() {
-        if (autoRefreshTimer != null) {
-            autoRefreshTimer.cancel();
+    /**
+     * [性能优化] 使用 Alarm 替代 Timer 进行自动刷新。
+     * Alarm 会自动绑定到 toolWindow 的生命周期，无需手动清理。
+     */
+    private void startAutoRefreshTimer(ToolWindow toolWindow) {
+        if (autoRefreshAlarm != null) {
+            autoRefreshAlarm.cancelAllRequests();
         }
 
-        autoRefreshTimer = new Timer("LiteFlowHelperAutoRefreshTimer", true);
-        autoRefreshTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                if (project != null && !project.isDisposed()) {
-                    DumbService.getInstance(project).runWhenSmart(() -> runRefreshTask());
-                } else {
-                    LOG.info("自动刷新：项目为null或已释放，正在停止定时器。");
-                    stopAutoRefreshTimer();
-                }
-            }
-        }, AUTO_REFRESH_INTERVAL, AUTO_REFRESH_INTERVAL);
-        LOG.info("LiteFlow Helper 自动刷新定时器已启动。");
+        // 创建 Alarm 并绑定到 toolWindow 的 Disposable，自动管理生命周期
+        autoRefreshAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, toolWindow.getDisposable());
+
+        scheduleNextRefresh();
+        LOG.info("LiteFlow Helper 自动刷新已启动（使用 Alarm）。");
     }
 
-    private void stopAutoRefreshTimer() {
-        if (autoRefreshTimer != null) {
-            autoRefreshTimer.cancel();
-            autoRefreshTimer = null;
-            LOG.info("LiteFlow Helper 自动刷新定时器已停止。");
+    /**
+     * 调度下一次自动刷新任务
+     */
+    private void scheduleNextRefresh() {
+        if (autoRefreshAlarm == null || autoRefreshAlarm.isDisposed()) {
+            return;
         }
+
+        autoRefreshAlarm.addRequest(() -> {
+            if (project != null && !project.isDisposed()) {
+                DumbService.getInstance(project).runWhenSmart(() -> {
+                    runRefreshTask();
+                    // 刷新完成后，调度下一次刷新
+                    scheduleNextRefresh();
+                });
+            } else {
+                LOG.info("自动刷新：项目为null或已释放，停止调度。");
+            }
+        }, AUTO_REFRESH_INTERVAL);
     }
 
     /**

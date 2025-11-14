@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 监听文件变化，当检测到 LiteFlow 相关的 Java 文件或 XML 文件变化时，
  * 自动触发组件重新扫描，确保缓存数据始终保持最新。
+ * [优化] 提取魔法数字为常量，增强可配置性
  */
 public class LiteFlowFileChangeListener implements BulkFileListener {
     private static final Logger LOG = Logger.getInstance(LiteFlowFileChangeListener.class);
@@ -32,8 +33,8 @@ public class LiteFlowFileChangeListener implements BulkFileListener {
     private final AtomicBoolean refreshScheduled = new AtomicBoolean(false);
     private final AtomicLong lastRefreshTime = new AtomicLong(0);
 
-    // 防抖间隔：最短3秒才能再次触发刷新
-    private static final long DEBOUNCE_INTERVAL_MS = 3000;
+    // [优化] 防抖间隔：最短3秒才能再次触发刷新
+    private static final long DEBOUNCE_INTERVAL_MS = 3000L;
 
     public LiteFlowFileChangeListener(Project project) {
         this.project = project;
@@ -77,25 +78,38 @@ public class LiteFlowFileChangeListener implements BulkFileListener {
 
     /**
      * 判断文件是否与 LiteFlow 相关（Java 组件文件或 XML 配置文件）
+     * [性能优化] 添加更精准的文件过滤，减少不必要的缓存刷新
      */
     private boolean isRelevantFile(VirtualFile file) {
         if (file.isDirectory()) {
             return false;
         }
 
-        String fileName = file.getName();
         String extension = file.getExtension();
 
         // 检查是否是 Java 文件（可能是组件类）
         if ("java".equalsIgnoreCase(extension)) {
-            // 进一步优化：可以检查文件内容是否包含 LiteFlow 相关注解或继承
-            // 但为了简单和性能考虑，这里只判断扩展名
+            // [优化] 排除明显不相关的目录
+            String path = file.getPath();
+            // 排除测试目录、生成代码目录等
+            if (path.contains("/test/") ||
+                path.contains("/generated/") ||
+                path.contains("/build/") ||
+                path.contains("/target/")) {
+                return false;
+            }
             return true;
         }
 
         // 检查是否是 XML 文件（可能是 LiteFlow 规则配置）
         if ("xml".equalsIgnoreCase(extension)) {
-            return true;
+            // [优化] 只关注可能的 LiteFlow 配置文件
+            String name = file.getName().toLowerCase();
+            // 包含 flow、liteflow、chain 或 rule 关键字的 XML 文件更可能是 LiteFlow 配置
+            return name.contains("flow") ||
+                   name.contains("liteflow") ||
+                   name.contains("chain") ||
+                   name.contains("rule");
         }
 
         return false;
