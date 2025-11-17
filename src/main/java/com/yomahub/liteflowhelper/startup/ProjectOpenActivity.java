@@ -126,12 +126,12 @@ public class ProjectOpenActivity implements StartupActivity.DumbAware {
                     LOG.info("LiteFlow 数据已成功预加载到缓存: " + foundChains.size() + " 个chains, " + foundNodes.size() + " 个nodes");
                 } else {
                     // 达到最大重试次数仍未找到组件
-                    LOG.error("经过 " + (retryCount + 1) + " 次尝试，未找到任何 LiteFlow 组件。");
-                    LOG.error("可能的原因：");
-                    LOG.error("1. 项目中没有 LiteFlow 组件");
-                    LOG.error("2. LiteFlow 依赖未正确添加到项目");
-                    LOG.error("3. 项目索引尚未完成，请等待索引完成后手动刷新");
-                    LOG.error("4. 组件类不在项目源码目录中");
+                    LOG.info("经过 " + (retryCount + 1) + " 次尝试，未找到任何 LiteFlow 组件。");
+                    LOG.info("可能的原因：");
+                    LOG.info("1. 项目中没有 LiteFlow 组件");
+                    LOG.info("2. LiteFlow 依赖未正确添加到项目");
+                    LOG.info("3. 项目索引尚未完成，请等待索引完成后手动刷新");
+                    LOG.info("4. 组件类不在项目源码目录中");
                     // 即使没找到也更新缓存为空，避免无限重试
                     cacheService.updateCache(foundChains, foundNodes);
                 }
