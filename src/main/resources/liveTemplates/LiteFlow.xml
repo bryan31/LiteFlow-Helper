@@ -1,0 +1,38 @@
+<templateSet group="LiteFlow">
+  <template name="THEN" value="THEN($END$)" description="Serial execution" toReformat="true" toShortenFQNames="true">
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+  <template name="WHEN" value="WHEN($END$)" description="Parallel execution" toReformat="true" toShortenFQNames="true">
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+  <template name="SWITCH" value="SWITCH($node$).to($END$)" description="Switch component" toReformat="true" toShortenFQNames="true">
+    <variable name="node" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+  <template name="IF" value="IF($node$, $then$, $else$)" description="Conditional component" toReformat="true" toShortenFQNames="true">
+    <variable name="node" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="then" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="else" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+  <template name="FOR" value="FOR($node$).DO($END$)" description="Loop execution" toReformat="true" toShortenFQNames="true">
+    <variable name="node" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+  <template name="WHILE" value="WHILE($node$).DO($END$)" description="While loop execution" toReformat="true" toShortenFQNames="true">
+    <variable name="node" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="XML" value="true" />
+    </context>
+  </template>
+</templateSet>

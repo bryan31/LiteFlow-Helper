@@ -73,8 +73,28 @@
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="com.yomahub.liteflowhelper.marker.LiteFlowChainLineMarkerProvider"/>
 
+
         <!-- ===== 新增的语言注入器，用于脚本高亮 ===== -->
         <languageInjector implementation="com.yomahub.liteflowhelper.injection.LiteFlowScriptInjector"/>
+
+
+
+        <!-- 新增: 注册 Live Templates -->
+        <defaultLiveTemplates file="liveTemplates/LiteFlow.xml"/>
+
+        <!-- 新增: 注册 Inspection -->
+        <localInspection language="XML"
+                         displayName="LiteFlow Missing Component"
+                         groupName="LiteFlow"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="com.yomahub.liteflowhelper.inspection.LiteFlowMissingComponentInspection"/>
+
+        <!-- 注册编辑器配色方案扩展 -->
+        <additionalTextAttributes scheme="Default" file="colorSchemes/LiteFlowDefault.xml"/>
+        <additionalTextAttributes scheme="Darcula" file="colorSchemes/LiteFlowDarcula.xml"/>
     </extensions>
+
+
 
 </idea-plugin>

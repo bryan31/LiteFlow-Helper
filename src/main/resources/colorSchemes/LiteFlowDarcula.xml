@@ -1,0 +1,50 @@
+<scheme name="Darcula" version="142" parent_scheme="Darcula">
+    <attributes>
+        <option name="LITEFLOW_COMPONENT">
+            <value>
+                <option name="FOREGROUND" value="78ccf0"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_CHAIN">
+            <value>
+                <option name="FOREGROUND" value="3d8beb"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_SUB_VARIABLE">
+            <value>
+                <option name="FOREGROUND" value="40BF77"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_UNKNOWN_COMPONENT">
+            <value>
+                <option name="FOREGROUND" value="EF4343"/>
+                <option name="EFFECT_COLOR" value="EF4343"/>
+                <option name="EFFECT_TYPE" value="2"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_EL_KEYWORD">
+            <value>
+                <option name="FOREGROUND" value="f78b70"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_MATCHED_BRACE">
+            <value>
+                <option name="FOREGROUND" value="FFA500"/>
+                <option name="EFFECT_COLOR" value="FFA500"/>
+                <option name="EFFECT_TYPE" value="4"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
+        <option name="LITEFLOW_EL_COMMENT">
+            <value>
+                <option name="FOREGROUND" value="808080"/>
+                <option name="FONT_TYPE" value="2"/>
+            </value>
+        </option>
+    </attributes>
+</scheme>

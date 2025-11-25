@@ -20,17 +20,17 @@ public class FileService implements Serializable {
     }
 
     public static FileService getInstance(@NotNull Project project) {
-        return ServiceManager.getService(project, FileService.class);
+        return project.getService(FileService.class);
     }
 
-    public VirtualFile getFileInResourcePath(Module module, String path){
+    public VirtualFile getFileInResourcePath(Module module, String path) {
         String[] paths = path.split("/");
         String fileName = paths[paths.length - 1];
         return FilenameIndex.getVirtualFilesByName(project, fileName, GlobalSearchScope.moduleScope(module))
                 .stream().filter((item) -> item.getPath().endsWith("/resources/" + path)).findFirst().orElse(null);
     }
 
-    public VirtualFile getFileInAbsolutePath(String file){
+    public VirtualFile getFileInAbsolutePath(String file) {
         return LocalFileSystem.getInstance().refreshAndFindFileByPath(file);
     }
 
