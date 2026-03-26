@@ -5,7 +5,7 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>LiteFlow-Helper</name>
+    <name>LiteFlow-Helper-Plus</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor url="https://liteflow.cc">LiteFlow</vendor>
@@ -53,8 +53,6 @@
         <!-- 新增：注册ReferenceContributor -->
         <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
 
-        <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
-
         <!-- ruleSource to File 跳转 Ctrl+左键 或 Ctrl+B-->
         <gotoDeclarationHandler order="first" implementation="com.yomahub.liteflowhelper.reference.config.RuleSourceToFileGotoDeclarationHandler" />
 
@@ -68,6 +66,8 @@
 
         <!-- [ 新增 ] 注册编辑器监听器，用于实现括号匹配高亮 -->
         <editorFactoryListener implementation="com.yomahub.liteflowhelper.editor.LiteFlowEditorListener"/>
+
+        <postFormatProcessor implementation="com.yomahub.liteflowhelper.format.LiteFlowPostFormatProcessor"/>
 
         <!-- 新增: 注册用于Java代码的LineMarkerProvider -->
         <codeInsight.lineMarkerProvider language="JAVA"

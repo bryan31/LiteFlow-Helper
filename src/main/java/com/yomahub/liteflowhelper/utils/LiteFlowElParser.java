@@ -29,6 +29,13 @@ public class LiteFlowElParser {
     /** 占位符替换前缀，用于生成合法的变量名 */
     public static final String DUMMY_VAR_PREFIX = "__ph";
 
+    /**
+     * 判断一个变量名是否为占位符替换后的 dummy 变量。
+     */
+    public static boolean isDummyPlaceholderVar(String varName) {
+        return varName != null && varName.startsWith(DUMMY_VAR_PREFIX);
+    }
+
     public enum TokenType {
         STRING,
         PLACEHOLDER,

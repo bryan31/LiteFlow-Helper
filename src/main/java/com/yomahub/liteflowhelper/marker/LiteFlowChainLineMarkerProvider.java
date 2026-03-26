@@ -41,15 +41,16 @@ public class LiteFlowChainLineMarkerProvider implements LineMarkerProvider {
             return null;
         }
 
-        // 解析方法调用，确认它是否是 FlowExecutor 的目标方法
-        PsiMethod resolvedMethod = callExpr.resolveMethod();
-        if (resolvedMethod == null) {
+        // [优化] 快速检查方法名，避免昂贵的 resolveMethod()
+        // 获取方法调用的引用名
+        String referenceName = ((PsiReferenceExpression) parent).getReferenceName();
+        if (referenceName == null || !referenceName.startsWith("execute")) {
             return null;
         }
 
-        // 检查方法名
-        String methodName = resolvedMethod.getName();
-        if (!methodName.startsWith("execute")) {
+        // 解析方法调用，确认它是否是 FlowExecutor 的目标方法
+        PsiMethod resolvedMethod = callExpr.resolveMethod();
+        if (resolvedMethod == null) {
             return null;
         }
 
@@ -65,20 +66,25 @@ public class LiteFlowChainLineMarkerProvider implements LineMarkerProvider {
             return null;
         }
 
-        String chainId;
+        String chainId = null;
         PsiExpression chainIdExpr = args[0];
 
-        // [重要改动] 使用常量求值帮助器来获取表达式的值
-        // 这能同时处理字符串字面量和指向常量的变量
-        PsiConstantEvaluationHelper evalHelper = JavaPsiFacade.getInstance(element.getProject()).getConstantEvaluationHelper();
-        Object constantValue = evalHelper.computeConstantExpression(chainIdExpr);
-
-        if (constantValue instanceof String) {
-            chainId = (String) constantValue;
-        } else {
-            chainId = null;
+        // [优化] 优先尝试直接获取字符串字面量，避免 PsiConstantEvaluationHelper 的开销
+        if (chainIdExpr instanceof PsiLiteralExpression) {
+             Object value = ((PsiLiteralExpression) chainIdExpr).getValue();
+             if (value instanceof String) {
+                 chainId = (String) value;
+             }
         }
 
+        // 如果不是简单的字面量，再使用常量求值帮助器
+        if (chainId == null) {
+            PsiConstantEvaluationHelper evalHelper = JavaPsiFacade.getInstance(element.getProject()).getConstantEvaluationHelper();
+            Object constantValue = evalHelper.computeConstantExpression(chainIdExpr);
+            if (constantValue instanceof String) {
+                chainId = (String) constantValue;
+            }
+        }
 
         if (chainId == null || chainId.isEmpty()) {
             return null;
@@ -87,18 +93,17 @@ public class LiteFlowChainLineMarkerProvider implements LineMarkerProvider {
         // 从缓存中查找 chainId 是否存在
         Project project = element.getProject();
         LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
-        Optional<ChainInfo> chainInfoOpt = cacheService.getCachedChains().stream()
-                .filter(c -> chainId.equals(c.getName()))
-                .findFirst();
+
+        // [优化] 使用 O(1) 的查找方法
+        ChainInfo chainInfo = cacheService.getChain(chainId);
 
         // 如果 chain 不存在，则不显示图标
-        if (chainInfoOpt.isEmpty()) {
+        if (chainInfo == null) {
             return null;
         }
 
         // --- 已修正的逻辑 ---
         // 获取 chain 定义所在的 PsiFile 和 offset
-        ChainInfo chainInfo = chainInfoOpt.get();
         PsiFile chainFile = chainInfo.getPsiFile();
         int offset = chainInfo.getOffset();
 

@@ -145,7 +145,7 @@ public class LiteFlowChainAnnotator implements Annotator {
 
             // [核心修改] 忽略由 LiteFlowElParser 生成的 dummy 占位符变量
             // 这些变量以 LiteFlowElParser.DUMMY_VAR_PREFIX (通常是 "__ph") 开头
-            if (varName.startsWith(LiteFlowElParser.DUMMY_VAR_PREFIX)) {
+            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
                 continue;
             }
 
@@ -187,7 +187,7 @@ public class LiteFlowChainAnnotator implements Annotator {
             String varName = entry.getKey();
             
             // [核心修改] 同样忽略 dummy 占位符变量的定义高亮
-            if (varName.startsWith(LiteFlowElParser.DUMMY_VAR_PREFIX)) {
+            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
                 continue;
             }
 

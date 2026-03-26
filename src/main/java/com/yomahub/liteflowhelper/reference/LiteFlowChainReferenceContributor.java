@@ -82,6 +82,9 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
                             if (LiteFlowXmlUtil.isElKeyword(varName)) {
                                 continue;
                             }
+                            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
+                                continue;
+                            }
 
                             Pattern varPattern = Pattern.compile("\\b" + Pattern.quote(varName) + "\\b");
                             // 在屏蔽后的文本上匹配
@@ -113,19 +116,16 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
             LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(getElement().getProject());
 
             // 1. 尝试解析为组件 (Node)
-            Optional<LiteFlowNodeInfo> nodeInfoOpt = cacheService.getCachedNodes().stream()
-                    .filter(node -> node.getNodeId().equals(elementName))
-                    .findFirst();
-            if (nodeInfoOpt.isPresent()) {
-                return nodeInfoOpt.get().getPsiElement();
+            // [优化] 使用 O(1) 查找
+            LiteFlowNodeInfo nodeInfo = cacheService.getNode(elementName);
+            if (nodeInfo != null) {
+                return nodeInfo.getPsiElement();
             }
 
             // 2. 尝试解析为子流程 (Chain)
-            Optional<ChainInfo> chainInfoOpt = cacheService.getCachedChains().stream()
-                    .filter(chain -> chain.getName().equals(elementName))
-                    .findFirst();
-            if (chainInfoOpt.isPresent()) {
-                ChainInfo chainInfo = chainInfoOpt.get();
+            // [优化] 使用 O(1) 查找
+            ChainInfo chainInfo = cacheService.getChain(elementName);
+            if (chainInfo != null) {
                 PsiFile psiFile = chainInfo.getPsiFile();
 
                 // 确保 psiFile 仍然有效

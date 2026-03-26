@@ -94,6 +94,10 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
                             continue;
                         }
 
+                        if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
+                            continue;
+                        }
+
                         // Check if it's a local variable
                         if (localVars.contains(varName)) {
                             continue;
