@@ -48,6 +48,7 @@ public final class LiteFlowElFormatter {
 
         for (int i = 0; i < tokens.size(); i++) {
             Token token = tokens.get(i);
+            Token next = i + 1 < tokens.size() ? tokens.get(i + 1) : null;
 
             switch (token.type) {
                 case LPAREN -> {
@@ -73,7 +74,11 @@ public final class LiteFlowElFormatter {
                 case COMMA -> {
                     result.append(token.text);
                     if (!multilineStack.isEmpty() && multilineStack.peek()) {
-                        appendNewLine(result, multilineDepth, indentUnit);
+                        if (next != null && next.type == TokenType.COMMENT && !hasLineBreakBetween(token, next, normalized)) {
+                            result.append(' ');
+                        } else {
+                            appendNewLine(result, multilineDepth, indentUnit);
+                        }
                     } else {
                         result.append(' ');
                     }
@@ -85,9 +90,9 @@ public final class LiteFlowElFormatter {
                     }
                 }
                 case COMMENT -> {
-                    appendToken(result, previous, token);
+                    appendCommentPrefix(result, previous, token, normalized);
                     result.append(token.text);
-                    if (token.text.startsWith("//") && hasMoreTokens(tokens, i + 1)) {
+                    if (hasMoreTokens(tokens, i + 1) && shouldBreakAfterComment(token, next, normalized)) {
                         appendNewLine(result, multilineDepth, indentUnit);
                     }
                 }
@@ -103,6 +108,14 @@ public final class LiteFlowElFormatter {
         return result.toString().trim();
     }
 
+    private static boolean shouldBreakAfterComment(Token current, Token next, String source) {
+        return isLineComment(current) || hasLineBreakBetween(current, next, source);
+    }
+
+    private static boolean isLineComment(Token token) {
+        return token != null && token.text.startsWith("//");
+    }
+
     private static boolean hasMoreTokens(List<Token> tokens, int startIndex) {
         for (int i = startIndex; i < tokens.size(); i++) {
             if (!tokens.get(i).text.isBlank()) {
@@ -114,6 +127,20 @@ public final class LiteFlowElFormatter {
 
     private static void appendToken(StringBuilder result, Token previous, Token current) {
         if (needsSpace(previous, current, result)) {
+            result.append(' ');
+        }
+    }
+
+    private static void appendCommentPrefix(StringBuilder result, Token previous, Token current, String source) {
+        if (previous == null || result.length() == 0) {
+            return;
+        }
+        if (hasLineBreakBetween(previous, current, source)) {
+            return;
+        }
+
+        char lastChar = result.charAt(result.length() - 1);
+        if (lastChar != '\n' && lastChar != ' ' && lastChar != '\t') {
             result.append(' ');
         }
     }
@@ -141,6 +168,18 @@ public final class LiteFlowElFormatter {
             return false;
         }
         return true;
+    }
+
+    private static boolean hasLineBreakBetween(Token previous, Token current, String source) {
+        if (previous == null || current == null || previous.endOffset > current.startOffset) {
+            return false;
+        }
+        for (int i = previous.endOffset; i < current.startOffset && i < source.length(); i++) {
+            if (source.charAt(i) == '\n') {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void appendNewLine(StringBuilder result, int depth, String indentUnit) {
@@ -252,6 +291,17 @@ public final class LiteFlowElFormatter {
                 }
             }
 
+            if (current == '<' && index + 3 < length && source.startsWith("<!--", index)) {
+                int start = index;
+                index += 4;
+                while (index + 2 < length && !source.startsWith("-->", index)) {
+                    index++;
+                }
+                index = Math.min(length, index + 3);
+                tokens.add(new Token(TokenType.COMMENT, source.substring(start, index), start, index));
+                continue;
+            }
+
             if (current == '{' && index + 1 < length && source.charAt(index + 1) == '{') {
                 int start = index;
                 index += 2;
@@ -309,6 +359,9 @@ public final class LiteFlowElFormatter {
                     if (next == '/' || next == '*') {
                         break;
                     }
+                }
+                if (c == '<' && index + 3 < length && source.startsWith("<!--", index)) {
+                    break;
                 }
                 if (c == '{' && index + 1 < length && source.charAt(index + 1) == '{') {
                     break;

@@ -11,7 +11,6 @@ import com.intellij.psi.impl.source.codeStyle.PostFormatProcessor;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlTagValue;
 import com.yomahub.liteflowhelper.utils.LiteFlowElFormatter;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
@@ -72,17 +71,12 @@ public class LiteFlowPostFormatProcessor implements PostFormatProcessor {
                 continue;
             }
 
-            XmlTagValue value = tag.getValue();
-            if (value == null) {
+            TextRange contentRange = getChainContentRange(tag);
+            if (contentRange == null || !contentRange.intersects(rangeToReformat)) {
                 continue;
             }
 
-            TextRange valueRange = value.getTextRange();
-            if (!valueRange.intersects(rangeToReformat)) {
-                continue;
-            }
-
-            String currentText = value.getText();
+            String currentText = document.getText(contentRange);
             if (currentText.trim().isEmpty()) {
                 continue;
             }
@@ -90,11 +84,23 @@ public class LiteFlowPostFormatProcessor implements PostFormatProcessor {
             String tagIndent = getLineIndent(document, tag.getTextRange().getStartOffset());
             String formattedText = LiteFlowElFormatter.formatChainBody(currentText, tagIndent, indentUnit);
             if (!formattedText.equals(currentText)) {
-                replacements.add(new Replacement(valueRange, formattedText));
+                replacements.add(new Replacement(contentRange, formattedText));
             }
         }
 
         return replacements;
+    }
+
+    private TextRange getChainContentRange(XmlTag tag) {
+        String tagText = tag.getText();
+        int openTagEnd = tagText.indexOf('>');
+        int closeTagStart = tagText.lastIndexOf("</");
+        if (openTagEnd < 0 || closeTagStart < 0 || closeTagStart <= openTagEnd) {
+            return null;
+        }
+
+        int baseOffset = tag.getTextRange().getStartOffset();
+        return TextRange.create(baseOffset + openTagEnd + 1, baseOffset + closeTagStart);
     }
 
     private String resolveIndentUnit(PsiFile file, CodeStyleSettings settings) {

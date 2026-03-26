@@ -36,4 +36,73 @@ public class LiteFlowElParserTest {
         Assert.assertEquals(1, realVars.size());
         Assert.assertEquals("actualNode", realVars.get(0));
     }
+
+    @Test
+    public void formatterShouldIndentNestedIfLikePythonStyle() {
+        String input = """
+                IF(
+                x1,
+                a,
+                IF(
+                x2,
+                b,
+                IF(x3, c, d)
+                )
+                );
+                """;
+
+        String expected = """
+                IF(
+                    x1,
+                    a,
+                    IF(
+                        x2,
+                        b,
+                        IF(x3, c, d)
+                    )
+                );
+                """;
+
+        Assert.assertEquals(expected.strip(), LiteFlowElFormatter.formatExpression(input, "    "));
+    }
+
+    @Test
+    public void formatterShouldKeepTrailingLineCommentsInline() {
+        String input = """
+                IF(
+                a ,// comment for a
+                b // comment for b end
+                );
+                """;
+
+        String expected = """
+                IF(
+                    a, // comment for a
+                    b // comment for b end
+                );
+                """;
+
+        Assert.assertEquals(expected.strip(), LiteFlowElFormatter.formatExpression(input, "    "));
+    }
+
+    @Test
+    public void formatterShouldSupportXmlComments() {
+        String input = """
+                THEN(
+                a, <!-- comment a -->
+                <!-- middle comment -->
+                b
+                );
+                """;
+
+        String expected = """
+                THEN(
+                    a, <!-- comment a -->
+                    <!-- middle comment -->
+                    b
+                );
+                """;
+
+        Assert.assertEquals(expected.strip(), LiteFlowElFormatter.formatExpression(input, "    "));
+    }
 }
