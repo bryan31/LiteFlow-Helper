@@ -29,10 +29,13 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- 注册项目级服务 -->
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheService"/>
-
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowScanCoordinator"/>
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.FileService"/>
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowRefreshStateService"/>
 
         <postStartupActivity implementation="com.yomahub.liteflowhelper.startup.ProjectOpenActivity"/>
+
+        <editorNotificationProvider implementation="com.yomahub.liteflowhelper.notification.LiteFlowRefreshNotificationProvider"/>
 
         <toolWindow
                 id="LiteFlow Chain Window"
