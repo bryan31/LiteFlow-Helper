@@ -12,6 +12,7 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTagValue;
 import com.ql.util.express.ExpressRunner;
 import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
+import com.yomahub.liteflowhelper.utils.LiteFlowElParser;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,9 +41,6 @@ public class LiteFlowChainAnnotator implements Annotator {
     // 用于查找所有单词（潜在的关键字或变量）的正则表达式
     private static final Pattern WORD_PATTERN = Pattern.compile("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b");
 
-    // [ 新增 ] 用于查找所有 /** ... **/ 类型注释的正则表达式
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("/\\*\\*.*?\\*\\*/", Pattern.DOTALL);
-
     @Override
     public void annotate(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         // 只处理 chain 标签
@@ -69,39 +67,37 @@ public class LiteFlowChainAnnotator implements Annotator {
         // 获取缓存服务
         LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
 
-        // --- [ 新增/修改 ] 步骤 0: 处理注释并创建屏蔽后的表达式 ---
-        StringBuilder maskedExpressionBuilder = new StringBuilder(expressionText);
-        Matcher commentMatcher = COMMENT_PATTERN.matcher(expressionText);
-        boolean hasError = false;
+        // --- 步骤 0: 处理注释和占位符并创建屏蔽后的表达式 ---
+        LiteFlowElParser.MaskedResult maskedResult = LiteFlowElParser.parse(expressionText);
 
-        // 第一次遍历: 高亮注释并用空格屏蔽它们
-        while(commentMatcher.find()){
-            int start = commentMatcher.start();
-            int end = commentMatcher.end();
-            TextRange range = new TextRange(valueOffset + start, valueOffset + end);
+        String maskedExpressionText = maskedResult.maskedText;
 
-            // 对注释本身进行高亮
-            holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-                    .range(range)
-                    .textAttributes(LiteFlowHighlightColorSettings.EL_COMMENT_KEY)
-                    .create();
 
-            // 在屏蔽版本的表达式中，用等长的空格替换注释
-            for (int i = start; i < end; i++) {
-                maskedExpressionBuilder.setCharAt(i, ' ');
+        // 高亮注释
+        for (LiteFlowElParser.ElToken token : maskedResult.tokens) {
+            if (token.type == LiteFlowElParser.TokenType.COMMENT) {
+                TextRange range = new TextRange(valueOffset + token.range.getStartOffset(), valueOffset + token.range.getEndOffset());
+                holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                        .range(range)
+                        .textAttributes(LiteFlowHighlightColorSettings.EL_COMMENT_KEY)
+                        .create();
             }
         }
 
         // 检查原始带注释的表达式是否有语法错误
+        boolean hasError = false;
         String[] originalVarNames = null;
         try {
             originalVarNames = EXPRESS_RUNNER.getOutVarNames(expressionText);
         } catch (Exception e) {
-            // 解析原始字符串失败，可能存在非法注释
+            // 解析原始字符串失败，可能存在非法注释或占位符
             hasError = true;
         }
 
-        String maskedExpressionText = maskedExpressionBuilder.toString();
+        // 如果屏蔽后的表达式为空（只有占位符/注释），则不需要继续处理
+        if (LiteFlowElParser.isMaskedExpressionEmpty(maskedExpressionText)) {
+            return;
+        }
 
         // --- 步骤 1: 优先高亮EL关键字 ---
         // 在屏蔽后的文本上进行匹配
@@ -147,6 +143,12 @@ public class LiteFlowChainAnnotator implements Annotator {
                 continue;
             }
 
+            // [核心修改] 忽略由 LiteFlowElParser 生成的 dummy 占位符变量
+            // 这些变量以 LiteFlowElParser.DUMMY_VAR_PREFIX (通常是 "__ph") 开头
+            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
+                continue;
+            }
+
             // 使用正则表达式查找当前变量在屏蔽后表达式中的所有出现位置
             // \\b 是单词边界，确保不会匹配到 "a" 在 "abc" 中
             Pattern varPattern = Pattern.compile("\\b" + Pattern.quote(varName) + "\\b");
@@ -181,7 +183,15 @@ public class LiteFlowChainAnnotator implements Annotator {
         }
 
         // 4. 对子变量的定义处进行高亮
-        for (TextRange defRange : subVariableDefs.values()) {
+        for (Map.Entry<String, TextRange> entry : subVariableDefs.entrySet()) {
+            String varName = entry.getKey();
+            
+            // [核心修改] 同样忽略 dummy 占位符变量的定义高亮
+            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
+                continue;
+            }
+
+            TextRange defRange = entry.getValue();
             holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                     .range(defRange)
                     .textAttributes(LiteFlowHighlightColorSettings.SUB_VARIABLE_KEY)

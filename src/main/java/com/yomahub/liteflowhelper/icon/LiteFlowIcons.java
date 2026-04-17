@@ -2,7 +2,7 @@ package com.yomahub.liteflowhelper.icon;
 
 import com.intellij.openapi.util.IconLoader;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 /**
  * 插件中使用的图标常量
@@ -29,5 +29,5 @@ public class LiteFlowIcons {
     /**
      * LiteFlow EL 关键字图标
      */
-    public static final Icon EL_KEYWORD_ICON = IconLoader.getIcon("/icons/el_keyword.svg", LiteFlowIcons.class);
+    public static final Icon EL_KEYWORD_ICON = IconLoader.getIcon("/icons/xml.svg", LiteFlowIcons.class);
 }

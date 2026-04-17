@@ -12,6 +12,7 @@ import com.ql.util.express.ExpressRunner;
 import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
 import com.yomahub.liteflowhelper.toolwindow.model.ChainInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
+import com.yomahub.liteflowhelper.utils.LiteFlowElParser;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,9 +34,6 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
 
     // 正则表达式，用于查找子变量定义 (e.g., "sub = THEN(a,b)")
     private static final Pattern SUB_VAR_DEFINITION_PATTERN = Pattern.compile("\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*=");
-
-    // [ 新增 ] 用于查找所有 /** ... **/ 类型注释的正则表达式
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("/\\*\\*.*?\\*\\*/", Pattern.DOTALL);
 
 
     @Override
@@ -61,15 +59,9 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
                             return PsiReference.EMPTY_ARRAY;
                         }
 
-                        // --- [ 新增/修改 ] 屏蔽注释 ---
-                        StringBuilder maskedTextBuilder = new StringBuilder(text);
-                        Matcher commentMatcher = COMMENT_PATTERN.matcher(text);
-                        while (commentMatcher.find()){
-                            for(int i = commentMatcher.start(); i < commentMatcher.end(); i++){
-                                maskedTextBuilder.setCharAt(i, ' ');
-                            }
-                        }
-                        String maskedText = maskedTextBuilder.toString();
+                        // --- 屏蔽注释和占位符 ---
+                        LiteFlowElParser.MaskedResult maskedResult = LiteFlowElParser.parse(text);
+                        String maskedText = maskedResult.maskedText;
                         // --- 屏蔽结束 ---
 
 
@@ -88,6 +80,9 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
                         for (String varName : varNames) {
                             // [修改] 调用 LiteFlowXmlUtil 中的公共方法判断关键字
                             if (LiteFlowXmlUtil.isElKeyword(varName)) {
+                                continue;
+                            }
+                            if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
                                 continue;
                             }
 
@@ -121,19 +116,16 @@ public class LiteFlowChainReferenceContributor extends PsiReferenceContributor {
             LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(getElement().getProject());
 
             // 1. 尝试解析为组件 (Node)
-            Optional<LiteFlowNodeInfo> nodeInfoOpt = cacheService.getCachedNodes().stream()
-                    .filter(node -> node.getNodeId().equals(elementName))
-                    .findFirst();
-            if (nodeInfoOpt.isPresent()) {
-                return nodeInfoOpt.get().getPsiElement();
+            // [优化] 使用 O(1) 查找
+            LiteFlowNodeInfo nodeInfo = cacheService.getNode(elementName);
+            if (nodeInfo != null) {
+                return nodeInfo.getPsiElement();
             }
 
             // 2. 尝试解析为子流程 (Chain)
-            Optional<ChainInfo> chainInfoOpt = cacheService.getCachedChains().stream()
-                    .filter(chain -> chain.getName().equals(elementName))
-                    .findFirst();
-            if (chainInfoOpt.isPresent()) {
-                ChainInfo chainInfo = chainInfoOpt.get();
+            // [优化] 使用 O(1) 查找
+            ChainInfo chainInfo = cacheService.getChain(elementName);
+            if (chainInfo != null) {
                 PsiFile psiFile = chainInfo.getPsiFile();
 
                 // 确保 psiFile 仍然有效

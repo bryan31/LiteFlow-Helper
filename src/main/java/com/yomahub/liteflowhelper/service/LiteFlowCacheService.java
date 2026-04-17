@@ -56,6 +56,16 @@ public final class LiteFlowCacheService {
 
     /**
      * [性能优化] 使用 Map 索引快速查询，复杂度从 O(n) 降至 O(1)
+     *
+     * @param chainId chain名称
+     * @return ChainInfo 对象，如果不存在则返回 null
+     */
+    public ChainInfo getChain(String chainId) {
+        return chainMap.get(chainId);
+    }
+
+    /**
+     * [性能优化] 使用 Map 索引快速查询，复杂度从 O(n) 降至 O(1)
      */
     public boolean containsCachedChain(String chainId) {
         return chainMap.containsKey(chainId);
@@ -68,6 +78,16 @@ public final class LiteFlowCacheService {
      */
     public List<LiteFlowNodeInfo> getCachedNodes() {
         return cachedNodes; // 已经是不可变列表，直接返回
+    }
+
+    /**
+     * [性能优化] 使用 Map 索引快速查询，复杂度从 O(n) 降至 O(1)
+     *
+     * @param nodeId node ID
+     * @return LiteFlowNodeInfo 对象，如果不存在则返回 null
+     */
+    public LiteFlowNodeInfo getNode(String nodeId) {
+        return nodeMap.get(nodeId);
     }
 
     /**

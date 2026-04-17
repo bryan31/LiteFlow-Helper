@@ -11,7 +11,9 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTagValue;
 import com.ql.util.express.ExpressRunner;
 import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
+import com.yomahub.liteflowhelper.utils.LiteFlowElParser;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -24,8 +26,28 @@ import java.util.regex.Pattern;
  */
 public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
 
+    @Nls
+    @NotNull
+    @Override
+    public String getDisplayName() {
+        return "LiteFlow component reference";
+    }
+
+    @Nls
+    @NotNull
+    @Override
+    public String getGroupDisplayName() {
+        return "LiteFlow";
+    }
+
+    @Nls
+    @NotNull
+    @Override
+    public String getStaticDescription() {
+        return "Checks if components referenced in LiteFlow EL expressions are defined.";
+    }
+
     private static final ExpressRunner EXPRESS_RUNNER = new ExpressRunner();
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("/\\*\\*.*?\\*\\*/", Pattern.DOTALL);
     private static final Pattern SUB_VAR_PATTERN = Pattern.compile("\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*=");
 
     @Override
@@ -33,10 +55,9 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
         return new PsiElementVisitor() {
             @Override
             public void visitElement(@NotNull PsiElement element) {
-                if (!(element instanceof XmlTag)) {
+                if (!(element instanceof XmlTag tag)) {
                     return;
                 }
-                XmlTag tag = (XmlTag) element;
                 if (!"chain".equals(tag.getName())) {
                     return;
                 }
@@ -47,7 +68,7 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
 
                 XmlTagValue value = tag.getValue();
                 String expressionText = value.getText();
-                if (expressionText == null || expressionText.trim().isEmpty()) {
+                if (expressionText.trim().isEmpty()) {
                     return;
                 }
 
@@ -55,15 +76,9 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
                 Project project = holder.getProject();
                 LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
 
-                // Mask comments
-                StringBuilder maskedExpressionBuilder = new StringBuilder(expressionText);
-                Matcher commentMatcher = COMMENT_PATTERN.matcher(expressionText);
-                while (commentMatcher.find()) {
-                    for (int i = commentMatcher.start(); i < commentMatcher.end(); i++) {
-                        maskedExpressionBuilder.setCharAt(i, ' ');
-                    }
-                }
-                String maskedExpressionText = maskedExpressionBuilder.toString();
+                // Mask comments and placeholders
+                LiteFlowElParser.MaskedResult maskedResult = LiteFlowElParser.parse(expressionText);
+                String maskedExpressionText = maskedResult.maskedText;
 
                 // Find local variable definitions
                 Set<String> localVars = new HashSet<>();
@@ -76,6 +91,10 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
                     String[] outVarNames = EXPRESS_RUNNER.getOutVarNames(maskedExpressionText);
                     for (String varName : outVarNames) {
                         if (LiteFlowXmlUtil.isElKeyword(varName)) {
+                            continue;
+                        }
+
+                        if (LiteFlowElParser.isDummyPlaceholderVar(varName)) {
                             continue;
                         }
 

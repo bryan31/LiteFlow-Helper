@@ -5,7 +5,7 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>LiteFlow-Helper</name>
+    <name>LiteFlow-Helper-Plus</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor url="https://liteflow.cc">LiteFlow</vendor>
@@ -29,10 +29,13 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- 注册项目级服务 -->
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheService"/>
-
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowScanCoordinator"/>
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.FileService"/>
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowRefreshStateService"/>
 
         <postStartupActivity implementation="com.yomahub.liteflowhelper.startup.ProjectOpenActivity"/>
+
+        <editorNotificationProvider implementation="com.yomahub.liteflowhelper.notification.LiteFlowRefreshNotificationProvider"/>
 
         <toolWindow
                 id="LiteFlow Chain Window"
@@ -53,8 +56,6 @@
         <!-- 新增：注册ReferenceContributor -->
         <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
 
-        <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
-
         <!-- ruleSource to File 跳转 Ctrl+左键 或 Ctrl+B-->
         <gotoDeclarationHandler order="first" implementation="com.yomahub.liteflowhelper.reference.config.RuleSourceToFileGotoDeclarationHandler" />
 
@@ -68,6 +69,8 @@
 
         <!-- [ 新增 ] 注册编辑器监听器，用于实现括号匹配高亮 -->
         <editorFactoryListener implementation="com.yomahub.liteflowhelper.editor.LiteFlowEditorListener"/>
+
+        <postFormatProcessor implementation="com.yomahub.liteflowhelper.format.LiteFlowPostFormatProcessor"/>
 
         <!-- 新增: 注册用于Java代码的LineMarkerProvider -->
         <codeInsight.lineMarkerProvider language="JAVA"
@@ -95,6 +98,10 @@
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/LiteFlowDarcula.xml"/>
     </extensions>
 
+    <projectListeners>
+    </projectListeners>
 
+    <actions>
+    </actions>
 
 </idea-plugin>

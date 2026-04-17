@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 负责在 LiteFlow EL 表达式中高亮匹配的括号。
@@ -44,6 +45,9 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
 
     private final Editor editor;
     private final List<RangeHighlighter> highlighters;
+    private final AtomicBoolean updateQueued = new AtomicBoolean(false);
+    private int firstHighlightedOffset = -1;
+    private int secondHighlightedOffset = -1;
 
     /**
      * 将本管理器附加到一个新的编辑器实例上。
@@ -122,44 +126,69 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
      * </p>
      */
     private void updateBraceHighlighting() {
+        if (!updateQueued.compareAndSet(false, true)) {
+            return;
+        }
+
         // 将更新高亮的逻辑调度到事件分发线程 (EDT) 执行
         // 这是为了确保所有对编辑器模型（如MarkupModel）的修改都在一个“写安全”的上下文中进行，从而解决 "Write-unsafe context" 异常。
         ApplicationManager.getApplication().invokeLater(() -> {
-            Project project = editor.getProject();
-            // 必须在对编辑器进行任何操作之前检查其有效性
-            if (project == null || project.isDisposed() || editor.isDisposed()) {
-                return;
-            }
+            try {
+                Project project = editor.getProject();
+                // 必须在对编辑器进行任何操作之前检查其有效性
+                if (project == null || project.isDisposed() || editor.isDisposed()) {
+                    return;
+                }
 
-            // 在执行任何操作之前先移除旧的高亮
-            removeHighlighters();
+                int caretOffset = editor.getCaretModel().getOffset();
+                // 如果光标在文档开头，则无法获取前一个字符，直接返回
+                if (caretOffset == 0) {
+                    removeHighlighters();
+                    return;
+                }
 
-            int caretOffset = editor.getCaretModel().getOffset();
-            // 如果光标在文档开头，则无法获取前一个字符，直接返回
-            if (caretOffset == 0) {
-                return;
-            }
+                CharSequence documentChars = editor.getDocument().getCharsSequence();
+                if (caretOffset > documentChars.length()) {
+                    removeHighlighters();
+                    return;
+                }
 
-            // 提交任何未保存的文档更改，以确保PSI树是最新的
-            PsiDocumentManager.getInstance(project).commitDocument(editor.getDocument());
-            PsiFile psiFile = PsiDocumentManager.getInstance(project).getPsiFile(editor.getDocument());
-            if (psiFile == null) {
-                return;
-            }
+                char currentChar = documentChars.charAt(caretOffset - 1);
+                if (currentChar != '(' && currentChar != ')') {
+                    removeHighlighters();
+                    return;
+                }
 
-            // 我们关心的是光标位置*之前*的字符，这通常是用户刚刚输入的或者光标所在位置的括号
-            PsiElement element = psiFile.findElementAt(caretOffset - 1);
-            if (element == null) {
-                return;
-            }
+                // 提交任何未保存的文档更改，以确保PSI树是最新的
+                PsiDocumentManager psiDocumentManager = PsiDocumentManager.getInstance(project);
+                psiDocumentManager.commitDocument(editor.getDocument());
+                PsiFile psiFile = psiDocumentManager.getPsiFile(editor.getDocument());
+                if (psiFile == null) {
+                    removeHighlighters();
+                    return;
+                }
 
-            // 查找包含该元素的XML标签
-            XmlTag tag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
-            // [修改] 目标标签应为 "chain"，并且要确保是LiteFlow的XML文件
-            if (tag != null && "chain".equalsIgnoreCase(tag.getName()) && psiFile instanceof XmlFile && LiteFlowXmlUtil.isLiteFlowXml((XmlFile) psiFile)) {
+                // 我们关心的是光标位置*之前*的字符，这通常是用户刚刚输入的或者光标所在位置的括号
+                PsiElement element = psiFile.findElementAt(caretOffset - 1);
+                if (element == null) {
+                    removeHighlighters();
+                    return;
+                }
+
+                // 查找包含该元素的XML标签
+                XmlTag tag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
+                // [修改] 目标标签应为 "chain"，并且要确保是LiteFlow的XML文件
+                if (tag == null || !"chain".equalsIgnoreCase(tag.getName())
+                        || !(psiFile instanceof XmlFile xmlFile)
+                        || !LiteFlowXmlUtil.isLiteFlowXml(xmlFile)) {
+                    removeHighlighters();
+                    return;
+                }
+
                 XmlTagValue value = tag.getValue();
                 // 检查光标是否真的在标签的值文本范围内
                 if (value == null || !value.getTextRange().contains(caretOffset - 1)) {
+                    removeHighlighters();
                     return;
                 }
 
@@ -169,13 +198,24 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
 
                 // 查找匹配的括号
                 int matchingBraceOffset = findMatchingBrace(text, relativeCaretOffset);
-
-                if (matchingBraceOffset != -1) {
-                    // 高亮当前光标位置的括号 (实际上是光标前一个字符)
-                    highlightBrace(caretOffset - 1);
-                    // 高亮匹配的括号 (需要将相对偏移转换回文档的绝对偏移)
-                    highlightBrace(valueTextOffset + matchingBraceOffset);
+                if (matchingBraceOffset == -1) {
+                    removeHighlighters();
+                    return;
                 }
+
+                int currentBraceOffset = caretOffset - 1;
+                int matchedBraceOffset = valueTextOffset + matchingBraceOffset;
+                if (currentBraceOffset == firstHighlightedOffset && matchedBraceOffset == secondHighlightedOffset) {
+                    return;
+                }
+
+                removeHighlighters();
+                highlightBrace(currentBraceOffset);
+                highlightBrace(matchedBraceOffset);
+                firstHighlightedOffset = currentBraceOffset;
+                secondHighlightedOffset = matchedBraceOffset;
+            } finally {
+                updateQueued.set(false);
             }
         }, ModalityState.defaultModalityState());
     }
@@ -251,6 +291,8 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
      */
     private void removeHighlighters() {
         if (highlighters.isEmpty() || editor.isDisposed()) {
+            firstHighlightedOffset = -1;
+            secondHighlightedOffset = -1;
             return;
         }
         MarkupModel markupModel = editor.getMarkupModel();
@@ -258,5 +300,7 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
             markupModel.removeHighlighter(highlighter);
         }
         highlighters.clear();
+        firstHighlightedOffset = -1;
+        secondHighlightedOffset = -1;
     }
 }

@@ -25,7 +25,7 @@ public class LiteFlowHighlightColorSettings {
         // 子流程的高亮: Dark(#3d8beb), Light(#0052CC), 加粗
         public static final TextAttributesKey CHAIN_KEY = createTextAttributesKey(
                         "LITEFLOW_CHAIN",
-                        new TextAttributes(new JBColor(new Color(0, 82, 204), new Color(61, 139, 235)), null, null,
+                        new TextAttributes(new JBColor(new Color(24, 0, 204), new Color(102, 61, 235)), null, null,
                                         null, Font.BOLD));
 
         // 子变量的高亮: Dark(#40BF77), Light(#008040), 加粗
