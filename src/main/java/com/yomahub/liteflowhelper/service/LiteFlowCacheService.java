@@ -78,6 +78,16 @@ public final class LiteFlowCacheService {
     }
 
     /**
+     * [性能优化] 按 nodeId O(1) 获取缓存的节点信息。
+     */
+    public LiteFlowNodeInfo getCachedNode(String nodeId) {
+        if (nodeId == null) {
+            return null;
+        }
+        return nodeMap.get(nodeId);
+    }
+
+    /**
      * 使用新的数据更新缓存。
      * [性能优化] 通过替换不可变列表引用，避免 CopyOnWriteArrayList 的高昂复制成本。
      * 同时更新 Map 索引以支持快速查询。

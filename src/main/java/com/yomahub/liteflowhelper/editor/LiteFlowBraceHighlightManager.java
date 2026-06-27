@@ -155,8 +155,8 @@ public class LiteFlowBraceHighlightManager implements CaretListener, DocumentLis
 
             // 查找包含该元素的XML标签
             XmlTag tag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
-            // [修改] 目标标签应为 "chain"，并且要确保是LiteFlow的XML文件
-            if (tag != null && "chain".equalsIgnoreCase(tag.getName()) && psiFile instanceof XmlFile && LiteFlowXmlUtil.isLiteFlowXml((XmlFile) psiFile)) {
+            // 目标标签应为 EL 承载标签（直接值 chain / route / body），且是 LiteFlow XML 文件
+            if (tag != null && LiteFlowXmlUtil.isElCarrierTag(tag) && psiFile instanceof XmlFile && LiteFlowXmlUtil.isLiteFlowXml((XmlFile) psiFile)) {
                 XmlTagValue value = tag.getValue();
                 // 检查光标是否真的在标签的值文本范围内
                 if (value == null || !value.getTextRange().contains(caretOffset - 1)) {

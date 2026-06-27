@@ -84,7 +84,7 @@ public class LiteFlowScriptInjector implements LanguageInjector {
      * @return 对应的Language实例；如果找不到或不支持，则返回null。
      */
     private Language getLanguage(String languageName) {
-        // 使用findLanguageByID可以避免硬编码依赖，只有当用户安装了对应语言插件时才会生效。
+        // 使用 findLanguageByID 避免硬编码依赖：仅当用户安装了对应语言插件时才生效。
         switch (languageName.toLowerCase()) {
             case "java":
                 return Language.findLanguageByID("JAVA");
@@ -92,6 +92,7 @@ public class LiteFlowScriptInjector implements LanguageInjector {
                 return Language.findLanguageByID("Groovy");
             case "js":
             case "javascript":
+            case "graaljs": // GraalJS 本质是 JavaScript，复用 JS 高亮
                 return Language.findLanguageByID("JavaScript");
             case "python":
                 return Language.findLanguageByID("Python");
@@ -99,6 +100,11 @@ public class LiteFlowScriptInjector implements LanguageInjector {
                 return Language.findLanguageByID("Lua");
             case "kotlin":
                 return Language.findLanguageByID("kotlin");
+            case "aviator":
+            case "aviatorscript":
+                // AviatorScript 为尽力而为支持：取决于用户是否安装了对应语法插件
+                return Language.findLanguageByID("AviatorScript");
+            // 注：qlexpress 目前无对应的 IntelliJ 语言插件，无法通过注入实现高亮，故不处理
             default:
                 return null;
         }

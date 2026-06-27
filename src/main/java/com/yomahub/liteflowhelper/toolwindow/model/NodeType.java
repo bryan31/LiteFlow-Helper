@@ -99,6 +99,37 @@ public enum NodeType {
     }
 
     /**
+     * 归并为粗粒度 {@link NodeCategory}，用于 EL 语义校验。
+     * 脚本变体归入对应基础类（如 SCRIPT_SWITCH → SWITCH）；UNKNOWN 保持 UNKNOWN（校验时放行）。
+     */
+    public NodeCategory toCategory() {
+        switch (this) {
+            case COMMON_COMPONENT:
+            case SCRIPT_COMMON:
+            case DECLARATIVE_COMMON:
+                return NodeCategory.COMMON;
+            case SWITCH_COMPONENT:
+            case SCRIPT_SWITCH:
+            case DECLARATIVE_SWITCH:
+                return NodeCategory.SWITCH;
+            case BOOLEAN_COMPONENT:
+            case SCRIPT_BOOLEAN:
+            case DECLARATIVE_BOL:
+                return NodeCategory.BOOLEAN;
+            case FOR_COMPONENT:
+            case SCRIPT_FOR:
+            case DECLARATIVE_FOR:
+                return NodeCategory.FOR;
+            case ITERATOR_COMPONENT:
+            case DECLARATIVE_ITERATOR:
+                return NodeCategory.ITERATOR;
+            case UNKNOWN:
+            default:
+                return NodeCategory.UNKNOWN;
+        }
+    }
+
+    /**
      * 根据声明式组件中 @LiteflowMethod 的 nodeType (com.yomahub.liteflow.enums.NodeTypeEnum 的名称) 获取节点类型
      * @param liteFlowNodeTypeName NodeTypeEnum 的 .name() 值 (例如 "COMMON", "SWITCH")
      * @return 对应的 NodeType，如果找不到则返回 UNKNOWN

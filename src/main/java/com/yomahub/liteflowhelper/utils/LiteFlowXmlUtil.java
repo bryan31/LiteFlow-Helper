@@ -35,6 +35,30 @@ public class LiteFlowXmlUtil {
             "threadPool", "DO", "BREAK", "data", "maxWaitSeconds", "maxWaitMilliseconds",
             "parallel", "retry", "bind","percentage"
     ).collect(Collectors.toSet());
+
+    /**
+     * 点号后的修饰符（作用于节点/条件）：a.tag(...)、WHEN(...).any(...) 等
+     */
+    private static final Set<String> EL_DOT_MODIFIERS = Stream.of(
+            "tag", "data", "bind", "id", "any", "must", "percentage", "ignoreError",
+            "threadPool", "parallel", "retry", "maxWaitSeconds", "maxWaitMilliseconds"
+    ).collect(Collectors.toSet());
+
+    /**
+     * 点号后的结构续写：SWITCH(x).TO(...)、FOR(x).DO(...)、IF(...).ELIF(...).ELSE(...) 等
+     */
+    private static final Set<String> EL_DOT_CONTINUATIONS = Stream.of(
+            "DO", "TO", "to", "DEFAULT", "ELSE", "ELIF", "BREAK", "PRE", "FINALLY"
+    ).collect(Collectors.toSet());
+
+    /**
+     * 顶层/参数位结构关键字：THEN(a, b, SWITCH(c)...) 中的 THEN/SWITCH 等
+     * PRE/FINALLY 既可作包装器 THEN(PRE(a),...) 也可点号续写，故顶层也包含。
+     */
+    private static final Set<String> EL_TOPLEVEL_KEYWORDS = Stream.of(
+            "THEN", "WHEN", "SER", "PAR", "SWITCH", "IF", "FOR", "WHILE", "ITERATOR",
+            "CATCH", "AND", "OR", "NOT", "NODE", "node", "PRE", "FINALLY"
+    ).collect(Collectors.toSet());
     //</editor-fold>
 
     //<editor-fold desc="LiteFlow相关常量">
@@ -79,6 +103,22 @@ public class LiteFlowXmlUtil {
         return EL_KEYWORDS;
     }
 
+    /**
+     * 根据光标是否紧跟 "." 返回合适的补全关键字集合。
+     * <ul>
+     *   <li>{@code afterDot=true}：点号后的修饰符（tag/data/...）+ 结构续写（DO/TO/...）</li>
+     *   <li>{@code afterDot=false}：顶层结构关键字（THEN/WHEN/SWITCH/...）</li>
+     * </ul>
+     */
+    public static Set<String> getCompletionKeywords(boolean afterDot) {
+        if (afterDot) {
+            Set<String> r = new HashSet<>(EL_DOT_MODIFIERS);
+            r.addAll(EL_DOT_CONTINUATIONS);
+            return r;
+        }
+        return EL_TOPLEVEL_KEYWORDS;
+    }
+
     //</editor-fold>
 
     //<editor-fold desc="XML处理方法">
@@ -118,6 +158,70 @@ public class LiteFlowXmlUtil {
         }
         if ("flow".equals(flowRootTag.getName())) {
             return flowRootTag.findFirstSubTag("nodes");
+        }
+        return null;
+    }
+
+    /**
+     * 判断一个 XmlTag 是否"承载" LiteFlow EL 表达式。
+     * <p>覆盖 chain 的三种写法：</p>
+     * <ul>
+     *   <li>直接值：{@code <chain>THEN(a);</chain>} —— chain 无 route/body 子标签时，其自身文本即 EL</li>
+     *   <li>仅 body：{@code <chain><body>...</body></chain>}</li>
+     *   <li>决策表：{@code <chain><route>...</route><body>...</body></chain>}</li>
+     * </ul>
+     * 遵循 liteflow {@code ParserHelper} 的语义：有 route/body 子标签时 EL 在子标签里，chain 自身不再承载 EL。
+     */
+    public static boolean isElCarrierTag(@Nullable XmlTag tag) {
+        if (tag == null) {
+            return false;
+        }
+        String name = tag.getName();
+        String parentName = (tag.getParent() instanceof XmlTag) ? ((XmlTag) tag.getParent()).getName() : null;
+        boolean hasRouteChild = tag.findFirstSubTag("route") != null;
+        boolean hasBodyChild = tag.findFirstSubTag("body") != null;
+        return isElCarrierByStructure(name, parentName, hasRouteChild, hasBodyChild);
+    }
+
+    /**
+     * {@link #isElCarrierTag(XmlTag)} 的纯逻辑核心，无 PSI 依赖，便于单元测试。
+     */
+    static boolean isElCarrierByStructure(String name, String parentName, boolean hasRouteChild, boolean hasBodyChild) {
+        if ("chain".equals(name)) {
+            // 直接值写法：仅当没有 route/body 子标签时，chain 自身文本才是 EL
+            return !hasRouteChild && !hasBodyChild;
+        }
+        if ("route".equals(name) || "body".equals(name)) {
+            // 子标签写法：仅当直接父标签是 chain 时承载 EL
+            return "chain".equals(parentName);
+        }
+        return false;
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="组件 nodeId 推导">
+
+    /**
+     * 推导一个 Java 组件类的 nodeId（用于反向导航 / 未使用检查）。
+     * <ul>
+     *   <li>继承式：取注解显式 id，否则按 Spring bean name 规则 Introspector.decapitalize(简单类名)</li>
+     *   <li>类声明式：取注解显式 id（无显式 id 则框架不注册，返回 null）</li>
+     *   <li>非组件 / 方法级声明式（多 nodeId）：返回 null</li>
+     * </ul>
+     */
+    @Nullable
+    public static String getComponentNodeId(@NotNull PsiClass psiClass) {
+        if (isInheritanceComponent(psiClass)) {
+            String id = getNodeIdFromComponentAnnotations(psiClass);
+            if (id != null && !id.isEmpty()) {
+                return id;
+            }
+            String name = psiClass.getName();
+            return name != null ? java.beans.Introspector.decapitalize(name) : null;
+        }
+        if (isClassDeclarativeComponent(psiClass)) {
+            String id = getNodeIdFromComponentAnnotations(psiClass);
+            return (id != null && !id.isEmpty()) ? id : null;
         }
         return null;
     }
@@ -286,20 +390,6 @@ public class LiteFlowXmlUtil {
     }
 
     /**
-     * 将类名转换为小驼峰命名法。
-     */
-    @Nullable
-    public static String convertClassNameToCamelCase(@Nullable String className) {
-        if (className == null || className.isEmpty()) {
-            return null;
-        }
-        if (className.length() > 1 && Character.isUpperCase(className.charAt(0)) && Character.isLowerCase(className.charAt(1))) {
-            return Character.toLowerCase(className.charAt(0)) + className.substring(1);
-        }
-        return Character.toLowerCase(className.charAt(0)) + className.substring(1);
-    }
-
-    /**
      * 获取注解中指定属性的值 (仅限字符串类型)。
      */
     @Nullable
@@ -334,44 +424,5 @@ public class LiteFlowXmlUtil {
         return null;
     }
 
-    /**
-     * [新增方法]
-     * 判断一个XML属性值是否为LiteFlow的EL表达式。
-     * 主要用于限定括号匹配、代码补全等功能的生效范围。
-     *
-     * @param attributeValue 要检查的XML属性值
-     * @return 如果是EL表达式则返回true，否则返回false
-     */
-    public static boolean isChainEL(@Nullable XmlAttributeValue attributeValue) {
-        if (attributeValue == null) {
-            return false;
-        }
-        PsiElement attribute = attributeValue.getParent();
-        if (!(attribute instanceof XmlAttribute)) {
-            return false;
-        }
-        String attributeName = ((XmlAttribute) attribute).getName();
-
-        PsiElement tag = attribute.getParent();
-        if (!(tag instanceof XmlTag)) {
-            return false;
-        }
-        String tagName = ((XmlTag) tag).getName();
-
-        // 场景1: <chain value="...">
-        if ("chain".equals(tagName) && "value".equals(attributeName)) {
-            return true;
-        }
-
-        // 场景2: <node ... then="..." when="..." for="..." while="..." if="...">
-        if ("node".equals(tagName)) {
-            return "then".equals(attributeName) ||
-                    "when".equals(attributeName) ||
-                    "for".equals(attributeName) ||
-                    "while".equals(attributeName) ||
-                    "if".equals(attributeName);
-        }
-        return false;
-    }
     //</editor-fold>
 }

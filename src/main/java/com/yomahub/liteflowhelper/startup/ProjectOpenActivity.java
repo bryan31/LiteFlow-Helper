@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.StartupActivity;
 import com.intellij.util.Alarm;
 import com.yomahub.liteflowhelper.listener.LiteFlowFileChangeListener;
+import com.yomahub.liteflowhelper.listener.LiteFlowPsiTreeChangeListener;
 import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
 import com.yomahub.liteflowhelper.toolwindow.model.ChainInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
@@ -36,12 +37,17 @@ public class ProjectOpenActivity implements StartupActivity.DumbAware {
 
     @Override
     public void runActivity(@NotNull Project project) {
-        // 注册文件变化监听器
+        // 注册 VFS 文件变化监听器（落盘变化）
         project.getMessageBus().connect().subscribe(
                 com.intellij.openapi.vfs.VirtualFileManager.VFS_CHANGES,
                 new LiteFlowFileChangeListener(project)
         );
-        LOG.info("LiteFlow 文件变化监听器已注册");
+        LOG.info("LiteFlow VFS 文件变化监听器已注册");
+
+        // 注册 PSI 树变化监听器（含已提交但未落盘的改动），使缓存刷新更及时
+        com.intellij.psi.PsiManager.getInstance(project).addPsiTreeChangeListener(
+                new LiteFlowPsiTreeChangeListener(project), project);
+        LOG.info("LiteFlow PSI 变化监听器已注册");
 
         // 等待项目索引完成后再执行后台扫描
         DumbService.getInstance(project).runWhenSmart(() -> {

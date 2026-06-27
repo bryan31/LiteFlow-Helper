@@ -9,24 +9,22 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTagValue;
-import com.ql.util.express.ExpressRunner;
-import com.yomahub.liteflowhelper.service.LiteFlowCacheService;
+import com.yomahub.liteflowhelper.service.LiteFlowElementResolver;
+import com.yomahub.liteflowhelper.utils.LiteFlowElLexer;
+import com.yomahub.liteflowhelper.utils.LiteFlowElToken;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Inspection to check if components used in LiteFlow EL expressions exist.
+ * 检查 LiteFlow EL 表达式中引用的组件 / 子流程是否存在。
+ * <p>
+ * 解析基于自写的 {@link LiteFlowElLexer}，不再依赖 QLExpress。
+ * </p>
  */
 public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
-
-    private static final ExpressRunner EXPRESS_RUNNER = new ExpressRunner();
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("/\\*\\*.*?\\*\\*/", Pattern.DOTALL);
-    private static final Pattern SUB_VAR_PATTERN = Pattern.compile("\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*=");
 
     @Override
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder, boolean isOnTheFly) {
@@ -37,7 +35,7 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
                     return;
                 }
                 XmlTag tag = (XmlTag) element;
-                if (!"chain".equals(tag.getName())) {
+                if (!LiteFlowXmlUtil.isElCarrierTag(tag)) {
                     return;
                 }
                 if (!(tag.getContainingFile() instanceof XmlFile)
@@ -52,73 +50,32 @@ public class LiteFlowMissingComponentInspection extends LocalInspectionTool {
                 }
 
                 int valueOffset = value.getTextRange().getStartOffset();
+                int tagOffset = tag.getTextRange().getStartOffset();
                 Project project = holder.getProject();
-                LiteFlowCacheService cacheService = LiteFlowCacheService.getInstance(project);
+                // 优先当前文件实时 PSI，回退全局缓存
+                LiteFlowElementResolver resolver = LiteFlowElementResolver.create(project, tag.getContainingFile());
 
-                // Mask comments
-                StringBuilder maskedExpressionBuilder = new StringBuilder(expressionText);
-                Matcher commentMatcher = COMMENT_PATTERN.matcher(expressionText);
-                while (commentMatcher.find()) {
-                    for (int i = commentMatcher.start(); i < commentMatcher.end(); i++) {
-                        maskedExpressionBuilder.setCharAt(i, ' ');
+                List<LiteFlowElToken> tokens = LiteFlowElLexer.tokenize(expressionText);
+                Map<String, LiteFlowElToken> subVarDefs = LiteFlowElLexer.findSubVarDefinitions(tokens);
+
+                for (LiteFlowElToken token : tokens) {
+                    if (token.type != LiteFlowElToken.Type.IDENT) {
+                        continue;
                     }
-                }
-                String maskedExpressionText = maskedExpressionBuilder.toString();
-
-                // Find local variable definitions
-                Set<String> localVars = new HashSet<>();
-                Matcher subVarMatcher = SUB_VAR_PATTERN.matcher(maskedExpressionText);
-                while (subVarMatcher.find()) {
-                    localVars.add(subVarMatcher.group(1));
-                }
-
-                try {
-                    String[] outVarNames = EXPRESS_RUNNER.getOutVarNames(maskedExpressionText);
-                    for (String varName : outVarNames) {
-                        if (LiteFlowXmlUtil.isElKeyword(varName)) {
-                            continue;
-                        }
-
-                        // Check if it's a local variable
-                        if (localVars.contains(varName)) {
-                            continue;
-                        }
-
-                        // Check if it's a known component or chain
-                        if (!cacheService.containsCachedNode(varName) && !cacheService.containsCachedChain(varName)) {
-                            // Find location
-                            Pattern varPattern = Pattern.compile("\\b" + Pattern.quote(varName) + "\\b");
-                            Matcher matcher = varPattern.matcher(maskedExpressionText);
-                            while (matcher.find()) {
-                                // Double check if it is really an assignment (to be safe against regex false
-                                // positives)
-                                boolean isAssignment = false;
-                                int nextCharIdx = matcher.end();
-                                while (nextCharIdx < maskedExpressionText.length()
-                                        && Character.isWhitespace(maskedExpressionText.charAt(nextCharIdx))) {
-                                    nextCharIdx++;
-                                }
-                                if (nextCharIdx < maskedExpressionText.length()
-                                        && maskedExpressionText.charAt(nextCharIdx) == '=') {
-                                    isAssignment = true;
-                                }
-
-                                if (!isAssignment) {
-                                    // Calculate range relative to the tag
-                                    int tagOffset = tag.getTextRange().getStartOffset();
-                                    int absoluteStart = valueOffset + matcher.start();
-                                    int absoluteEnd = valueOffset + matcher.end();
-                                    TextRange rangeInTag = new TextRange(absoluteStart - tagOffset,
-                                            absoluteEnd - tagOffset);
-
-                                    holder.registerProblem(tag, rangeInTag,
-                                            "LiteFlow component '" + varName + "' not found");
-                                }
-                            }
-                        }
+                    String name = token.text;
+                    // 关键字、子变量（定义或引用）跳过
+                    if (LiteFlowXmlUtil.isElKeyword(name) || subVarDefs.containsKey(name)) {
+                        continue;
                     }
-                } catch (Exception e) {
-                    // Ignore parse errors
+                    // 已知的组件 / 子流程跳过（含当前文件实时定义）
+                    if (resolver.isNode(name) || resolver.isChain(name)) {
+                        continue;
+                    }
+
+                    int absStart = valueOffset + token.start;
+                    int absEnd = valueOffset + token.end;
+                    TextRange rangeInTag = new TextRange(absStart - tagOffset, absEnd - tagOffset);
+                    holder.registerProblem(tag, rangeInTag, "LiteFlow component '" + name + "' not found");
                 }
             }
         };

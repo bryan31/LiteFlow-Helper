@@ -34,9 +34,9 @@ public class LiteFlowTypedHandler extends TypedHandlerDelegate {
                 return Result.CONTINUE;
             }
 
-            // 检查当前元素是否在 LiteFlow XML 的 <chain> 标签内
+            // 检查当前元素是否在 LiteFlow 的 EL 承载标签内（直接值 chain / route / body）
             XmlTag chainTag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
-            if (chainTag != null && "chain".equals(chainTag.getName()) && LiteFlowXmlUtil.isLiteFlowXml((XmlFile) file)) {
+            if (chainTag != null && LiteFlowXmlUtil.isElCarrierTag(chainTag) && LiteFlowXmlUtil.isLiteFlowXml((XmlFile) file)) {
                 // 如果条件满足，在光标当前位置插入配对的右括号
                 editor.getDocument().insertString(offset, ")");
                 // 返回 STOP，表示我们已经处理了这次输入，IDE 无需再执行默认操作

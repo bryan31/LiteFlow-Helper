@@ -32,6 +32,9 @@
 
         <projectService serviceImplementation="com.yomahub.liteflowhelper.service.FileService"/>
 
+        <!-- 缓存刷新调度器（VFS/PSI 监听共享） -->
+        <projectService serviceImplementation="com.yomahub.liteflowhelper.service.LiteFlowCacheRefresher"/>
+
         <postStartupActivity implementation="com.yomahub.liteflowhelper.startup.ProjectOpenActivity"/>
 
         <toolWindow
@@ -50,9 +53,10 @@
         <!-- 新增：注册Annotator -->
         <annotator language="XML" implementationClass="com.yomahub.liteflowhelper.highlight.LiteFlowChainAnnotator"/>
 
-        <!-- 新增：注册ReferenceContributor -->
-        <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
+        <!-- EL 表达式结构与语义校验（类型不符/括号/缺 TO·DO 等） -->
+        <annotator language="XML" implementationClass="com.yomahub.liteflowhelper.highlight.LiteFlowElValidationAnnotator"/>
 
+        <!-- 新增：注册ReferenceContributor -->
         <psi.referenceContributor language="XML" implementation="com.yomahub.liteflowhelper.reference.LiteFlowChainReferenceContributor"/>
 
         <!-- ruleSource to File 跳转 Ctrl+左键 或 Ctrl+B-->
@@ -73,6 +77,10 @@
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="com.yomahub.liteflowhelper.marker.LiteFlowChainLineMarkerProvider"/>
 
+        <!-- 组件类反向导航：gutter 图标跳到引用它的 chain -->
+        <codeInsight.lineMarkerProvider language="JAVA"
+                                        implementationClass="com.yomahub.liteflowhelper.marker.LiteFlowComponentUsageLineMarkerProvider"/>
+
 
         <!-- ===== 新增的语言注入器，用于脚本高亮 ===== -->
         <languageInjector implementation="com.yomahub.liteflowhelper.injection.LiteFlowScriptInjector"/>
@@ -89,6 +97,14 @@
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="com.yomahub.liteflowhelper.inspection.LiteFlowMissingComponentInspection"/>
+
+        <!-- 未使用组件检查（Java 侧） -->
+        <localInspection language="JAVA"
+                         displayName="LiteFlow Unused Component"
+                         groupName="LiteFlow"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="com.yomahub.liteflowhelper.inspection.LiteFlowUnusedComponentInspection"/>
 
         <!-- 注册编辑器配色方案扩展 -->
         <additionalTextAttributes scheme="Default" file="colorSchemes/LiteFlowDefault.xml"/>

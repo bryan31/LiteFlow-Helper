@@ -128,7 +128,9 @@ public class LiteFlowNodeScanner {
                 if (LiteFlowXmlUtil.isInheritanceComponent(inheritor)) {
                     String nodeIdFromAnnotation = LiteFlowXmlUtil.getNodeIdFromComponentAnnotations(inheritor);
                     String nodeName = inheritor.getName();
-                    String primaryId = nodeIdFromAnnotation != null ? nodeIdFromAnnotation : LiteFlowXmlUtil.convertClassNameToCamelCase(nodeName);
+                    // 继承式组件的 nodeId 即 Spring bean name：有显式值时取注解值，否则按 Spring 规则取
+                    // Introspector.decapitalize(简单类名)（与框架 NodeCmpBeanProcess 的取值一致）。
+                    String primaryId = nodeIdFromAnnotation != null ? nodeIdFromAnnotation : java.beans.Introspector.decapitalize(nodeName);
 
                     // [优化] 使用 StringUtil 统一空值检查
                     if (StringUtil.isEmpty(primaryId)) {
@@ -220,13 +222,10 @@ public class LiteFlowNodeScanner {
             // [重构] 使用工具类进行判断
             if (LiteFlowXmlUtil.isClassDeclarativeComponent(psiClass)) {
                 String nodeId = LiteFlowXmlUtil.getNodeIdFromComponentAnnotations(psiClass);
-                if (nodeId == null) {
-                    nodeId = LiteFlowXmlUtil.convertClassNameToCamelCase(psiClass.getName());
-                }
-
-                // [优化] 使用 StringUtil 统一空值检查
+                // 声明式组件必须有显式 nodeId（@LiteflowComponent/@Component 的 value，或 @LiteflowMethod 的 nodeId）。
+                // 三者皆无时框架会丢弃该组件、不注册任何 id，因此这里不做类名兜底，避免凭空生成运行时不存在的 id。
                 if (StringUtil.isEmpty(nodeId)) {
-                    LOG.warn("跳过声明式类组件，无法确定Node ID: " + psiClass.getQualifiedName());
+                    LOG.debug("跳过声明式类组件，无显式 Node ID: " + psiClass.getQualifiedName());
                     continue;
                 }
 
