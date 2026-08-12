@@ -92,8 +92,8 @@ public final class LiteFlowElFormatter {
     }
 
     /**
-     * 输出 [i, j) 区间的一个表达式：整体平铺能放入剩余行宽则平铺，
-     * 否则断开头部分组（参数逐个换行缩进）。点号续写链的处理在后续任务加入。
+     * 输出 [i, j) 区间的一个表达式：头部（标识符/字面量 + 可选分组）+ 点号续写段序列。
+     * 整条链能平铺则全部同行；否则逐段处理，后缀能平铺则粘连，不能则断开当前段内部。
      */
     private static void emitExpr(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
                                  int[] match, int i, int j, int level, @NotNull ElFormatOptions opt) {
@@ -114,11 +114,73 @@ public final class LiteFlowElFormatter {
             out.append(tokens.get(headStart).text);
             headStart++;
         }
-        // 区间被前导注释占满（如赋值后仅剩注释）时注释已输出完毕，直接返回，避免 breakHead 越界
+        // 区间被前导注释占满（如赋值后仅剩注释）时注释已输出完毕，直接返回，避免 headEnd 越界
         if (headStart >= j) {
             return;
         }
-        breakHead(out, tokens, match, headStart, j, level, opt);
+        int headEndIdx = headEnd(tokens, match, headStart, j);
+        if (headEndIdx >= j) {
+            breakHead(out, tokens, match, headStart, j, level, opt);
+            return;
+        }
+        emitHead(out, tokens, match, headStart, headEndIdx, level, opt);
+        int k = headEndIdx;
+        while (k < j) {
+            int segEnd = segmentEnd(tokens, match, k, j);
+            String suffix = flat(tokens, k, j);
+            if (currentColumn(out, opt) + suffix.length() <= opt.maxLineWidth) {
+                out.append(suffix);
+                return;
+            }
+            emitSegmentBroken(out, tokens, match, k, segEnd, level, opt);
+            k = segEnd;
+        }
+    }
+
+    /** 头段结束下标：首个 token（可为前导注释之后的词/'('）+ 紧随其后的分组。 */
+    private static int headEnd(@NotNull List<LiteFlowElToken> tokens, int[] match, int i, int j) {
+        if ("(".equals(tokens.get(i).text)) {
+            return match[i] + 1;
+        }
+        int k = i + 1;
+        if (k < j && "(".equals(tokens.get(k).text)) {
+            return match[k] + 1;
+        }
+        return k;
+    }
+
+    /** 输出头段：能平铺则平铺，否则断开其分组。 */
+    private static void emitHead(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                 int[] match, int i, int headEndIdx, int level, @NotNull ElFormatOptions opt) {
+        String headFlat = flat(tokens, i, headEndIdx);
+        if (currentColumn(out, opt) + headFlat.length() <= opt.maxLineWidth) {
+            out.append(headFlat);
+            return;
+        }
+        breakHead(out, tokens, match, i, headEndIdx, level, opt);
+    }
+
+    /** 续写段结束下标：'.' IDENT [ '(' args ')' ]。 */
+    private static int segmentEnd(@NotNull List<LiteFlowElToken> tokens, int[] match, int k, int j) {
+        int end = k + 2;
+        if (end < j && "(".equals(tokens.get(end).text)) {
+            end = match[end] + 1;
+        }
+        return end;
+    }
+
+    /** 断开一个续写段：修饰符段永不拆开；.TO/.to 段参数两两一行；其余段参数逐个一行。 */
+    private static void emitSegmentBroken(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                          int[] match, int k, int segEnd, int level, @NotNull ElFormatOptions opt) {
+        String keyword = tokens.get(k + 1).text;
+        int openIdx = (segEnd - k >= 4 && "(".equals(tokens.get(k + 2).text)) ? k + 2 : -1;
+        if (openIdx < 0 || LiteFlowXmlUtil.isDotModifier(keyword)) {
+            out.append(flat(tokens, k, segEnd));
+            return;
+        }
+        boolean pairMode = "TO".equalsIgnoreCase(keyword);
+        out.append('.').append(keyword).append('(');
+        emitBrokenGroupInterior(out, tokens, match, openIdx, level, pairMode, opt);
     }
 
     /** 断开头部分组：前缀 + '('，参数逐行，闭合 ')' 回到 level 缩进；无分组或分组不覆盖到末尾时平铺（防御）。 */
@@ -144,7 +206,7 @@ public final class LiteFlowElFormatter {
 
     /**
      * 输出已展开分组的内部（openIdx 为 '(' 的下标）：按顶层逗号切分参数，逐个换行输出，
-     * 最后闭合 ')'。pairMode 时参数两两一行（供 .TO 续写使用，见 Task 4）。
+     * 最后闭合 ')'。pairMode 时参数两两一行（供 .TO/.to 续写段使用）。
      */
     private static void emitBrokenGroupInterior(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
                                                 int[] match, int openIdx, int level, boolean pairMode,

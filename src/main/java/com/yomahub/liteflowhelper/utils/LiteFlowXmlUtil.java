@@ -95,6 +95,14 @@ public class LiteFlowXmlUtil {
     }
 
     /**
+     * 判断是否为点号修饰符（作用于节点/条件，如 a.tag(...)、WHEN(...).any(...)）。
+     * 仅供 {@link LiteFlowElFormatter} 做格式化保护，包级私有。
+     */
+    static boolean isDotModifier(@Nullable String text) {
+        return text != null && EL_DOT_MODIFIERS.contains(text);
+    }
+
+    /**
      * 新增: 返回所有EL关键字的集合，用于代码补全。
      *
      * @return EL关键字集合

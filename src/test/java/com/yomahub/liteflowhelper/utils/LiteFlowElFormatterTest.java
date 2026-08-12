@@ -175,4 +175,71 @@ public class LiteFlowElFormatterTest {
         assertTrue(r.success);
         assertTrue(r.formatted.contains(comment));
     }
+
+    @Test
+    public void switchToChainExpandsWithPairedToArgs() {
+        FormatResult r = fmt("SWITCH(channel).TO(\"app\", appProcess, \"web\", webProcess, \"h5\", h5Process, \"api\", apiProcess).DEFAULT(defaultProcess);");
+        assertTrue(r.success);
+        assertEquals("SWITCH(channel).TO(\n"
+                + "    \"app\", appProcess,\n"
+                + "    \"web\", webProcess,\n"
+                + "    \"h5\", h5Process,\n"
+                + "    \"api\", apiProcess\n"
+                + ").DEFAULT(defaultProcess);", r.formatted);
+    }
+
+    @Test
+    public void elifElseChainBreaksAtFirstNonFittingSegment() {
+        FormatResult r = fmt("IF(vipUserCheck, vipDiscountProcess).ELIF(newUserCheck, newUserGiftProcess).ELSE(normalPriceProcess);");
+        assertTrue(r.success);
+        assertEquals("IF(vipUserCheck, vipDiscountProcess).ELIF(\n"
+                + "    newUserCheck,\n"
+                + "    newUserGiftProcess\n"
+                + ").ELSE(normalPriceProcess);", r.formatted);
+    }
+
+    @Test
+    public void shortChainStaysOnOneLine() {
+        FormatResult r = fmt("FOR(countNode).DO(loopProcess);");
+        assertTrue(r.success);
+        assertEquals("FOR(countNode).DO(loopProcess);", r.formatted);
+    }
+
+    @Test
+    public void dotModifiersStayGluedInsideBrokenGroup() {
+        FormatResult r = fmt("THEN(a.tag(\"app\").data(\"ctx\"),WHEN(stockCheckNode,priceCheckNode,inventoryValidateNode,riskControlNode,auditLogNode),b);");
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    a.tag(\"app\").data(\"ctx\"),\n"
+                + "    WHEN(\n"
+                + "        stockCheckNode,\n"
+                + "        priceCheckNode,\n"
+                + "        inventoryValidateNode,\n"
+                + "        riskControlNode,\n"
+                + "        auditLogNode\n"
+                + "    ),\n"
+                + "    b\n"
+                + ");", r.formatted);
+    }
+
+    @Test
+    public void modifierSegmentItselfNeverBreaks() {
+        // 修饰符段自身超宽时平铺溢出，不拆开 .tag(...)
+        FormatResult r = fmt("THEN(someNodeComponentWithLongName01.tag(\"someExtremelyLongTagValue012345678901234\"), b);");
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    someNodeComponentWithLongName01.tag(\"someExtremelyLongTagValue012345678901234\"),\n"
+                + "    b\n"
+                + ");", r.formatted);
+    }
+
+    @Test
+    public void chainFormattingIsIdempotent() {
+        String el = "SWITCH(channel).TO(\"app\", appProcess, \"web\", webProcess, \"h5\", h5Process, \"api\", apiProcess).DEFAULT(defaultProcess);";
+        FormatResult once = fmt(el);
+        assertTrue(once.success);
+        FormatResult twice = fmt(once.formatted);
+        assertTrue(twice.success);
+        assertEquals(once.formatted, twice.formatted);
+    }
 }
