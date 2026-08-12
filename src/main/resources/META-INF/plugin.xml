@@ -109,7 +109,22 @@
         <!-- 注册编辑器配色方案扩展 -->
         <additionalTextAttributes scheme="Default" file="colorSchemes/LiteFlowDefault.xml"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/LiteFlowDarcula.xml"/>
+
+        <!-- EL 表达式格式化意图（Alt+Enter） -->
+        <intentionAction>
+            <className>com.yomahub.liteflowhelper.format.LiteFlowFormatElIntention</className>
+        </intentionAction>
     </extensions>
+
+    <!-- EL 表达式格式化 Action（编辑器右键菜单，跟在 Reformat Code 之后） -->
+    <actions>
+        <action id="LiteFlow.FormatEl"
+                class="com.yomahub.liteflowhelper.format.LiteFlowFormatElAction"
+                text="格式化 LiteFlow EL 表达式"
+                description="格式化当前 chain 的 LiteFlow EL 表达式（智能单行/多行）">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="ReformatCode"/>
+        </action>
+    </actions>
 
 
 

@@ -14,6 +14,7 @@ LiteFlow-Helper 是一款 IntelliJ IDEA 插件，专为 LiteFlow 框架设计，
 - **专属图标**：为 LiteFlow 组件和规则提供定制化图标显示
 - **行标记导航**：Java 代码中调用规则的位置左侧会显示图标，可快速跳转到规则定义
 - **脚本高亮**：规则内各类脚本的智能语法高亮和补全
+- **EL 格式化**：Alt+Enter / 右键菜单一键格式化 chain 内 EL 表达式（智能单行/多行，括号不匹配时拒绝并提示）
 
 ## 构建系统
 项目使用 Gradle 结合 IntelliJ Platform Gradle Plugin 进行构建管理。
