@@ -20,6 +20,15 @@ public final class LiteFlowElFormatter {
     }
 
     public static @NotNull FormatResult format(@NotNull String elText, @NotNull ElFormatOptions options) {
+        // CDATA 写法的 chain 值文本（<![CDATA[...]]>）含 CDATA 起止标记，分词会把标记当标点重排，
+        // 写回后 XML 无法解析；此处直接拒收，由 IDE 层走 failure 提示路径
+        int contentStart = 0;
+        while (contentStart < elText.length() && elText.charAt(contentStart) <= ' ') {
+            contentStart++;
+        }
+        if (elText.startsWith("<![CDATA", contentStart)) {
+            return FormatResult.failure("暂不支持 CDATA 包裹的 EL");
+        }
         List<LiteFlowElToken> tokens = LiteFlowElLexer.tokenize(elText);
         if (!hasNonComment(tokens, 0)) {
             return FormatResult.failure("EL 为空");
@@ -126,6 +135,18 @@ public final class LiteFlowElFormatter {
         emitHead(out, tokens, match, headStart, headEndIdx, level, opt);
         int k = headEndIdx;
         while (k < j) {
+            // 防御：头部之后剩余的不是 "." 续写段（如尾随注释/多余 token）时平铺粘连，按不可拆处理
+            if (k + 1 >= j || !".".equals(tokens.get(k).text)) {
+                // 残余以注释开头时与前文之间补一个空格（flat 不带前导空格）
+                if (tokens.get(k).type == LiteFlowElToken.Type.COMMENT && out.length() > 0) {
+                    char last = out.charAt(out.length() - 1);
+                    if (last != ' ' && last != '\n') {
+                        out.append(' ');
+                    }
+                }
+                out.append(flat(tokens, k, j));
+                return;
+            }
             int segEnd = segmentEnd(tokens, match, k, j);
             String suffix = flat(tokens, k, j);
             if (currentColumn(out, opt) + suffix.length() <= opt.maxLineWidth) {

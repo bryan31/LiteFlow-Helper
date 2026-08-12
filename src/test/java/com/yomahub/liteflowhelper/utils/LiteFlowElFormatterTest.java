@@ -242,4 +242,52 @@ public class LiteFlowElFormatterTest {
         assertTrue(twice.success);
         assertEquals(once.formatted, twice.formatted);
     }
+
+    @Test
+    public void trailingCommentInsideOverwideGroupDoesNotDuplicateCloseParen() {
+        // 回归：组内最后一个参数带尾随注释且参数行超宽时，续写段循环曾把 tokens 里闭合分组的 ')'
+        // 当作段内容重复输出一次（合法 EL 变非法、再次格式化括号不平衡）
+        String n3 = "thirdLongNodeNameForCoverage03WithExtraPadding0123456789ABCDEFGHIJKLMNOP"; // 72 字符，使参数行平铺超宽
+        String el = "THEN(aVeryLongNodeNameForCoverage01, anotherLongNodeNameForCoverage02, " + n3 + " /* 末尾 */);";
+        FormatResult r = fmt(el);
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    aVeryLongNodeNameForCoverage01,\n"
+                + "    anotherLongNodeNameForCoverage02,\n"
+                + "    " + n3 + " /* 末尾 */\n"
+                + ");", r.formatted);
+        // 不出现连续两个 ')' 的重复闭合
+        assertFalse(r.formatted.contains("))"));
+        // 幂等：修复前第二次 format 会因括号不平衡直接失败
+        FormatResult twice = fmt(r.formatted);
+        assertTrue(twice.success);
+        assertEquals(r.formatted, twice.formatted);
+    }
+
+    @Test
+    public void loneCommentAfterEdgeGluedHeadDoesNotCrash() {
+        // 回归：头部平铺 79 列贴边（不超宽故不展开），其后孤立残余只有 1 个注释 token 且无分号时，
+        // 续写段循环曾越界访问 tokens.get(k+1) 抛 IndexOutOfBoundsException
+        String el = "THEN(nodeAlpha, nodeBeta, nodeGamma, nodeDelta, nodeEpsilon, nodeZeta, nodeEta) /* 注 */";
+        FormatResult r = fmt(el);
+        assertTrue(r.success);
+        // 残余注释平铺粘连到头部之后，与前文之间补一个空格
+        assertEquals("THEN(nodeAlpha, nodeBeta, nodeGamma, nodeDelta, nodeEpsilon, nodeZeta, nodeEta) /* 注 */",
+                r.formatted);
+        FormatResult twice = fmt(r.formatted);
+        assertTrue(twice.success);
+        assertEquals(r.formatted, twice.formatted);
+    }
+
+    @Test
+    public void cdataWrappedElIsRejected() {
+        // 回归：CDATA 写法的 chain 值文本含 <![CDATA[ / ]]> 标记，重排会损坏 XML，必须拒收
+        FormatResult r = fmt("<![CDATA[THEN(a);]]>");
+        assertFalse(r.success);
+        assertTrue(r.reason.contains("CDATA"));
+        // 前导空白之后紧跟 CDATA 标记同样拒收
+        FormatResult padded = fmt("  \n<![CDATA[THEN(a);]]>");
+        assertFalse(padded.success);
+        assertTrue(padded.reason.contains("CDATA"));
+    }
 }
