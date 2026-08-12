@@ -87,8 +87,120 @@ public final class LiteFlowElFormatter {
             out.append(tokens.get(start).text).append(" = ");
             exprStart = start + 2;
         }
-        // 表达式本体（fits-or-break 在 Task 3 加入，本任务仍平铺）
-        out.append(flat(tokens, exprStart, end));
+        // 表达式本体：整体平铺或按层级展开
+        emitExpr(out, tokens, match, exprStart, end, 0, opt);
+    }
+
+    /**
+     * 输出 [i, j) 区间的一个表达式：整体平铺能放入剩余行宽则平铺，
+     * 否则断开头部分组（参数逐个换行缩进）。点号续写链的处理在后续任务加入。
+     */
+    private static void emitExpr(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                 int[] match, int i, int j, int level, @NotNull ElFormatOptions opt) {
+        if (i >= j) {
+            return;
+        }
+        String flatAll = flat(tokens, i, j);
+        if (currentColumn(out, opt) + flatAll.length() <= opt.maxLineWidth) {
+            out.append(flatAll);
+            return;
+        }
+        // break 模式：前导注释先输出（与后随内容同行）
+        int headStart = i;
+        while (headStart < j && tokens.get(headStart).type == LiteFlowElToken.Type.COMMENT) {
+            if (out.length() > 0) {
+                out.append(' ');
+            }
+            out.append(tokens.get(headStart).text);
+            headStart++;
+        }
+        breakHead(out, tokens, match, headStart, j, level, opt);
+    }
+
+    /** 断开头部分组：前缀 + '('，参数逐行，闭合 ')' 回到 level 缩进；无分组或分组不覆盖到末尾时平铺（防御）。 */
+    private static void breakHead(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                  int[] match, int i, int j, int level, @NotNull ElFormatOptions opt) {
+        int openIdx = -1;
+        if ("(".equals(tokens.get(i).text)) {
+            openIdx = i;
+        } else if (i + 1 < j && "(".equals(tokens.get(i + 1).text)) {
+            openIdx = i + 1;
+        }
+        if (openIdx < 0 || match[openIdx] + 1 != j) {
+            out.append(flat(tokens, i, j));
+            return;
+        }
+        if (openIdx == i) {
+            out.append('(');
+        } else {
+            out.append(tokens.get(i).text).append('(');
+        }
+        emitBrokenGroupInterior(out, tokens, match, openIdx, level, false, opt);
+    }
+
+    /**
+     * 输出已展开分组的内部（openIdx 为 '(' 的下标）：按顶层逗号切分参数，逐个换行输出，
+     * 最后闭合 ')'。pairMode 时参数两两一行（供 .TO 续写使用，见 Task 4）。
+     */
+    private static void emitBrokenGroupInterior(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                                int[] match, int openIdx, int level, boolean pairMode,
+                                                @NotNull ElFormatOptions opt) {
+        int closeIdx = match[openIdx];
+        List<int[]> args = splitTopLevelArgs(tokens, openIdx + 1, closeIdx);
+        if (args.isEmpty()) {
+            out.append(')');
+            return;
+        }
+        for (int a = 0; a < args.size(); a++) {
+            boolean sameLine = pairMode && a % 2 == 1;
+            if (sameLine) {
+                out.append(' ');
+            } else {
+                newlineIndent(out, opt.baseIndent + (level + 1) * opt.indentWidth);
+            }
+            emitExpr(out, tokens, match, args.get(a)[0], args.get(a)[1], level + 1, opt);
+            if (a < args.size() - 1) {
+                out.append(',');
+            }
+        }
+        newlineIndent(out, opt.baseIndent + level * opt.indentWidth);
+        out.append(')');
+    }
+
+    /** 将 [from, to) 区间按括号深度 0 的逗号切分为若干参数区间（注释随相邻参数）。 */
+    private static @NotNull List<int[]> splitTopLevelArgs(@NotNull List<LiteFlowElToken> tokens, int from, int to) {
+        List<int[]> args = new java.util.ArrayList<>();
+        int depth = 0;
+        int segStart = from;
+        for (int k = from; k < to; k++) {
+            LiteFlowElToken t = tokens.get(k);
+            if (t.type != LiteFlowElToken.Type.PUNCT) {
+                continue;
+            }
+            if ("(".equals(t.text)) {
+                depth++;
+            } else if (")".equals(t.text)) {
+                depth--;
+            } else if (",".equals(t.text) && depth == 0) {
+                if (segStart < k) {
+                    args.add(new int[]{segStart, k});
+                }
+                segStart = k + 1;
+            }
+        }
+        if (segStart < to) {
+            args.add(new int[]{segStart, to});
+        }
+        return args;
+    }
+
+    /** 当前输出位置的列号（首行计入 firstLineColumn）。 */
+    static int currentColumn(@NotNull StringBuilder out, @NotNull ElFormatOptions opt) {
+        int lastNl = out.lastIndexOf("\n");
+        if (lastNl < 0) {
+            return opt.firstLineColumn + out.length();
+        }
+        return out.length() - lastNl - 1;
     }
 
     /** 换行并输出 columns 个空格缩进。 */

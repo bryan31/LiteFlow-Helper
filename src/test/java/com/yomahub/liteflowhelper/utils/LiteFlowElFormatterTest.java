@@ -84,4 +84,86 @@ public class LiteFlowElFormatterTest {
         assertTrue(r.success);
         assertEquals("THEN(a);\n/* c */ WHEN(b);", r.formatted);
     }
+
+    @Test
+    public void overwideGroupExpandsByLevel() {
+        FormatResult r = fmt("THEN(orderCheck,WHEN(stockCheck,priceCheck),IF(vipUser,vipDiscount).ELSE(normalPrice),finishNode);");
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    orderCheck,\n"
+                + "    WHEN(stockCheck, priceCheck),\n"
+                + "    IF(vipUser, vipDiscount).ELSE(normalPrice),\n"
+                + "    finishNode\n"
+                + ");", r.formatted);
+    }
+
+    @Test
+    public void nestedGroupExpandsRecursively() {
+        FormatResult r = fmt("THEN(a,WHEN(stockCheckNode,priceCheckNode,inventoryValidateNode,riskControlNode,auditLogNode),b);");
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    a,\n"
+                + "    WHEN(\n"
+                + "        stockCheckNode,\n"
+                + "        priceCheckNode,\n"
+                + "        inventoryValidateNode,\n"
+                + "        riskControlNode,\n"
+                + "        auditLogNode\n"
+                + "    ),\n"
+                + "    b\n"
+                + ");", r.formatted);
+    }
+
+    @Test
+    public void emptyGroupStaysInline() {
+        FormatResult r = fmt("THEN(a, b());");
+        assertTrue(r.success);
+        assertEquals("THEN(a, b());", r.formatted);
+    }
+
+    @Test
+    public void firstLineColumnCountsIntoWidthBudget() {
+        String el = "THEN(nodeAlpha, nodeBeta, nodeGamma, nodeDelta, nodeEpsilon);";
+        // 首行起始列 0：60 列平铺，保持单行
+        FormatResult fits = LiteFlowElFormatter.format(el, new ElFormatOptions(80, 4, 0, 0));
+        assertTrue(fits.success);
+        assertEquals(el, fits.formatted);
+        // 首行起始列 30：30+60=90 超宽，展开；续行缩进 baseIndent4 + 层级
+        FormatResult breaks = LiteFlowElFormatter.format(el, new ElFormatOptions(80, 4, 4, 30));
+        assertTrue(breaks.success);
+        assertEquals("THEN(\n"
+                + "        nodeAlpha,\n"
+                + "        nodeBeta,\n"
+                + "        nodeGamma,\n"
+                + "        nodeDelta,\n"
+                + "        nodeEpsilon\n"
+                + "    );", breaks.formatted);
+    }
+
+    @Test
+    public void leadingCommentInBrokenGroupStaysWithItsArg() {
+        FormatResult r = fmt("THEN(/* 前置检查 */ orderCheck,WHEN(stockCheckNode,priceCheckNode,inventoryValidateNode,riskControlNode,auditLogNode),finishNode);");
+        assertTrue(r.success);
+        assertEquals("THEN(\n"
+                + "    /* 前置检查 */ orderCheck,\n"
+                + "    WHEN(\n"
+                + "        stockCheckNode,\n"
+                + "        priceCheckNode,\n"
+                + "        inventoryValidateNode,\n"
+                + "        riskControlNode,\n"
+                + "        auditLogNode\n"
+                + "    ),\n"
+                + "    finishNode\n"
+                + ");", r.formatted);
+    }
+
+    @Test
+    public void formattingIsIdempotent() {
+        String el = "THEN(a,WHEN(stockCheckNode,priceCheckNode,inventoryValidateNode,riskControlNode,auditLogNode),b);";
+        FormatResult once = fmt(el);
+        assertTrue(once.success);
+        FormatResult twice = fmt(once.formatted);
+        assertTrue(twice.success);
+        assertEquals(once.formatted, twice.formatted);
+    }
 }
