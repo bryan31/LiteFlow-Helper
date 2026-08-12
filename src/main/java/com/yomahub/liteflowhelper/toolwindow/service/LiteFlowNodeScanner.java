@@ -18,7 +18,6 @@ import com.intellij.psi.xml.XmlTag;
 import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
-import org.apache.commons.collections.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -204,7 +203,7 @@ public class LiteFlowNodeScanner {
         // [重构] 使用提取的公共方法获取候选类
         Set<PsiClass> matchedClasses = findCandidateComponentClasses(project);
 
-        if (CollectionUtils.isEmpty(matchedClasses)){
+        if (matchedClasses.isEmpty()){
             LOG.warn("未找到任何带组件注解的类");
             return Collections.emptyList();
         }
