@@ -43,6 +43,18 @@ public class ElTextEscaperTest {
     }
 
     @Test
+    public void hexEntityWithoutDigitsIsEscaped() {
+        // &#x; 的 hex 标记后没有任何数字，不是合法数值实体，& 必须转义
+        assertEquals("THEN(a, \"&amp;#x;\");", ElTextEscaper.escape("THEN(a, \"&#x;\");"));
+    }
+
+    @Test
+    public void backslashBeforeAmpersandDoesNotBypassEscaping() {
+        // EL 里的 \& 不是需要保留的转义序列：\ 原样保留，& 仍必须转义
+        assertEquals("THEN(a, \"a\\&amp;b\");", ElTextEscaper.escape("THEN(a, \"a\\&b\");"));
+    }
+
+    @Test
     public void angleBracketsOutsideStringAreKept() {
         // 非法 EL 的防御场景：字符串外的 < > 不转义
         assertEquals("THEN(a>b);", ElTextEscaper.escape("THEN(a>b);"));

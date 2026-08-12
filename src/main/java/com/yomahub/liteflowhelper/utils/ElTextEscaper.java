@@ -22,7 +22,15 @@ public final class ElTextEscaper {
             char c = s.charAt(i);
             if (inString) {
                 if (c == '\\' && i + 1 < s.length()) {
-                    sb.append(c).append(s.charAt(++i));
+                    char next = s.charAt(i + 1);
+                    if (next == quote || next == '\\') {
+                        // \" 与 \\ 转义序列原样保留（且 \" 不终结字符串）
+                        sb.append(c).append(next);
+                        i++;
+                        continue;
+                    }
+                    // 其余情况（如 \&）仅保留反斜杠本身，后续字符仍走正常的 < > & 检查
+                    sb.append(c);
                     continue;
                 }
                 if (c == quote) {
@@ -69,16 +77,17 @@ public final class ElTextEscaper {
         String body = s.substring(ampIdx + 1, semi);
         if (body.startsWith("#")) {
             // 数值实体：&#123; 或 &#x1F;
+            boolean hex = body.length() > 1 && (body.charAt(1) == 'x' || body.charAt(1) == 'X');
             for (int k = 1; k < body.length(); k++) {
                 char c = body.charAt(k);
-                boolean hex = body.length() > 1 && (body.charAt(1) == 'x' || body.charAt(1) == 'X');
                 boolean ok = hex ? (Character.isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
                         : Character.isDigit(c);
                 if (!ok && !(hex && k == 1)) {
                     return false;
                 }
             }
-            return body.length() > 1;
+            // hex 形式在 x/X 之后至少还要有一位数字，&#x; 不算合法实体
+            return hex ? body.length() > 2 : body.length() > 1;
         }
         // XML 预定义实体只有这 5 个，其余名字必须转义 &
         return "lt".equals(body) || "gt".equals(body) || "amp".equals(body)
