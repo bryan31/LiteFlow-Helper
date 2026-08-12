@@ -48,4 +48,40 @@ public class LiteFlowElFormatterTest {
         assertFalse(fmt("   ").success);
         assertFalse(fmt("/* 只有注释 */").success);
     }
+
+    @Test
+    public void statementsAreSplitOntoOwnLines() {
+        FormatResult r = fmt("sub = THEN(a,b);THEN(sub,c);");
+        assertTrue(r.success);
+        assertEquals("sub = THEN(a, b);\nTHEN(sub, c);", r.formatted);
+    }
+
+    @Test
+    public void statementContinuationUsesBaseIndent() {
+        FormatResult r = LiteFlowElFormatter.format("sub = THEN(a,b);THEN(sub,c);",
+                new ElFormatOptions(80, 4, 8, 8));
+        assertTrue(r.success);
+        assertEquals("sub = THEN(a, b);\n        THEN(sub, c);", r.formatted);
+    }
+
+    @Test
+    public void missingTrailingSemicolonIsPreserved() {
+        FormatResult r = fmt("sub = THEN(a); THEN(sub)");
+        assertTrue(r.success);
+        assertEquals("sub = THEN(a);\nTHEN(sub)", r.formatted);
+    }
+
+    @Test
+    public void trailingCommentGluesToLastStatementLine() {
+        FormatResult r = fmt("THEN(a); /* 说明 */");
+        assertTrue(r.success);
+        assertEquals("THEN(a); /* 说明 */", r.formatted);
+    }
+
+    @Test
+    public void commentBeforeStatementStartsItsLine() {
+        FormatResult r = fmt("THEN(a); /* c */ WHEN(b);");
+        assertTrue(r.success);
+        assertEquals("THEN(a);\n/* c */ WHEN(b);", r.formatted);
+    }
 }

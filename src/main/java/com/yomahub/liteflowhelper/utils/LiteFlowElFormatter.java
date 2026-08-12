@@ -28,8 +28,75 @@ public final class LiteFlowElFormatter {
         if (match == null) {
             return FormatResult.failure("EL 表达式括号不匹配");
         }
-        // 本任务仅做单行平铺；语句拆分与 fits-or-break 在后续任务加入
-        return FormatResult.success(flat(tokens, 0, tokens.size()));
+        StringBuilder out = new StringBuilder(elText.length() + 32);
+        // 顶层按括号深度 0 的 ; 切分语句，语句各自独占一行
+        int depth = 0;
+        int stmtStart = 0;
+        for (int i = 0; i < tokens.size(); i++) {
+            LiteFlowElToken t = tokens.get(i);
+            if (t.type != LiteFlowElToken.Type.PUNCT) {
+                continue;
+            }
+            if ("(".equals(t.text)) {
+                depth++;
+            } else if (")".equals(t.text)) {
+                depth--;
+            } else if (";".equals(t.text) && depth == 0) {
+                emitStatement(out, tokens, match, stmtStart, i, options);
+                out.append(';');
+                stmtStart = i + 1;
+                // 后面还有实质内容才换行；只剩注释时由 emitStatement 粘连到当前行
+                if (hasNonComment(tokens, stmtStart)) {
+                    newlineIndent(out, options.baseIndent);
+                }
+            }
+        }
+        emitStatement(out, tokens, match, stmtStart, tokens.size(), options);
+        return FormatResult.success(out.toString());
+    }
+
+    /** 输出一条语句：[子变量前缀] 表达式；区间为空或为纯注释（尾随注释粘连）时特殊处理。 */
+    private static void emitStatement(@NotNull StringBuilder out, @NotNull List<LiteFlowElToken> tokens,
+                                      int[] match, int start, int end, @NotNull ElFormatOptions opt) {
+        if (start >= end) {
+            return;
+        }
+        // 纯注释区间（语句结尾分号之后的注释）：粘连到当前行
+        boolean allComments = true;
+        for (int k = start; k < end; k++) {
+            if (tokens.get(k).type != LiteFlowElToken.Type.COMMENT) {
+                allComments = false;
+                break;
+            }
+        }
+        if (allComments) {
+            for (int k = start; k < end; k++) {
+                if (out.length() > 0) {
+                    out.append(' ');
+                }
+                out.append(tokens.get(k).text);
+            }
+            return;
+        }
+        // 子变量定义前缀：IDENT 紧跟 =
+        int exprStart = start;
+        if (end - start >= 2
+                && tokens.get(start).type == LiteFlowElToken.Type.IDENT
+                && tokens.get(start + 1).type == LiteFlowElToken.Type.PUNCT
+                && "=".equals(tokens.get(start + 1).text)) {
+            out.append(tokens.get(start).text).append(" = ");
+            exprStart = start + 2;
+        }
+        // 表达式本体（fits-or-break 在 Task 3 加入，本任务仍平铺）
+        out.append(flat(tokens, exprStart, end));
+    }
+
+    /** 换行并输出 columns 个空格缩进。 */
+    static void newlineIndent(@NotNull StringBuilder out, int columns) {
+        out.append('\n');
+        for (int k = 0; k < columns; k++) {
+            out.append(' ');
+        }
     }
 
     /** 从 from 起是否还存在非注释 token。 */
