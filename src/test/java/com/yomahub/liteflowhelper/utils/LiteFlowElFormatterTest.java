@@ -166,4 +166,13 @@ public class LiteFlowElFormatterTest {
         assertTrue(twice.success);
         assertEquals(once.formatted, twice.formatted);
     }
+
+    @Test
+    public void commentOnlyAfterAssignmentDoesNotCrash() {
+        // 赋值前缀后仅剩一条超宽注释：前导注释循环会耗尽区间，不得越界崩溃
+        String comment = "/* " + "a".repeat(80) + " */";
+        FormatResult r = fmt("x = " + comment);
+        assertTrue(r.success);
+        assertTrue(r.formatted.contains(comment));
+    }
 }

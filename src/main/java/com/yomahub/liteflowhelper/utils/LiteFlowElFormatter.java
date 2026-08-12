@@ -114,6 +114,10 @@ public final class LiteFlowElFormatter {
             out.append(tokens.get(headStart).text);
             headStart++;
         }
+        // 区间被前导注释占满（如赋值后仅剩注释）时注释已输出完毕，直接返回，避免 breakHead 越界
+        if (headStart >= j) {
+            return;
+        }
         breakHead(out, tokens, match, headStart, j, level, opt);
     }
 
