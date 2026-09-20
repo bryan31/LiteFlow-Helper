@@ -88,6 +88,14 @@ public class LiteFlowElementResolver {
         return liveNodes.containsKey(name) || cache.containsCachedNode(name);
     }
 
+    public boolean isAiNode(@Nullable String name) {
+        if (StringUtil.isEmpty(name)) return false;
+        // 当前文件的 XML 节点优先，不能套用缓存里同名 Java AI 组件的配色。
+        if (liveNodes.containsKey(name)) return false;
+        LiteFlowNodeInfo node = cache.getCachedNode(name);
+        return node != null && node.getType().isAiComponent();
+    }
+
     public boolean isChain(@Nullable String name) {
         if (StringUtil.isEmpty(name)) return false;
         return liveChains.containsKey(name) || cache.containsCachedChain(name);

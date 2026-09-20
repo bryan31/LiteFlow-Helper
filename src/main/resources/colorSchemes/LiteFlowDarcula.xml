@@ -1,5 +1,11 @@
 <scheme name="Darcula" version="142" parent_scheme="Darcula">
     <attributes>
+        <option name="LITEFLOW_AI_COMPONENT">
+            <value>
+                <option name="FOREGROUND" value="C4A7E7"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
         <option name="LITEFLOW_COMPONENT">
             <value>
                 <option name="FOREGROUND" value="78ccf0"/>

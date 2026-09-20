@@ -14,6 +14,10 @@ public enum NodeType {
     FOR_COMPONENT("com.yomahub.liteflow.core.NodeForComponent", "FOR", "/icons/common.svg"),
     ITERATOR_COMPONENT("com.yomahub.liteflow.core.NodeIteratorComponent", "ITR", "/icons/common.svg"),
 
+    // AI 组件使用独立图标，但保留普通节点 / SWITCH 的执行语义。
+    AI_AGENT_COMPONENT("com.yomahub.liteflow.agent.component.AbstractAgentComponent", "AI", "/icons/ai.svg"),
+    JEV_SWITCH_COMPONENT("com.yomahub.liteflow.agent.jev.JevSwitchComponent", "JEV", "/icons/ai.svg"),
+
     // XML脚本节点
     SCRIPT_COMMON("script", "CM", "/icons/script_common.svg"),
     SCRIPT_SWITCH("switch_script", "SWI", "/icons/script_common.svg"),
@@ -47,6 +51,10 @@ public enum NodeType {
 
     public String getDescription() {
         return description;
+    }
+
+    public boolean isAiComponent() {
+        return this == AI_AGENT_COMPONENT || this == JEV_SWITCH_COMPONENT;
     }
 
     public Icon getIcon() {
@@ -105,10 +113,12 @@ public enum NodeType {
     public NodeCategory toCategory() {
         switch (this) {
             case COMMON_COMPONENT:
+            case AI_AGENT_COMPONENT:
             case SCRIPT_COMMON:
             case DECLARATIVE_COMMON:
                 return NodeCategory.COMMON;
             case SWITCH_COMPONENT:
+            case JEV_SWITCH_COMPONENT:
             case SCRIPT_SWITCH:
             case DECLARATIVE_SWITCH:
                 return NodeCategory.SWITCH;

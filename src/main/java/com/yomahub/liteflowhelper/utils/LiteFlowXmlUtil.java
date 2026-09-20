@@ -4,7 +4,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.xml.*;
+import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import com.intellij.openapi.diagnostic.Logger;
@@ -257,6 +259,18 @@ public class LiteFlowXmlUtil {
 
         // 检查继承关系
         return nodeComponentBaseClass != null && psiClass.isInheritor(nodeComponentBaseClass, true);
+    }
+
+    /** 按真实继承关系识别 AI 组件，包括间接子类及 @Bean 的抽象返回类型。 */
+    @Nullable
+    public static NodeType getAiComponentType(@NotNull PsiClass psiClass) {
+        for (NodeType type : new NodeType[]{NodeType.AI_AGENT_COMPONENT, NodeType.JEV_SWITCH_COMPONENT}) {
+            if (type.getIdentifier().equals(psiClass.getQualifiedName())
+                    || InheritanceUtil.isInheritor(psiClass, type.getIdentifier())) {
+                return type;
+            }
+        }
+        return null;
     }
 
     /**

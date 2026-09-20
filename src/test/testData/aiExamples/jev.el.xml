@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flow>
+    <chain name="support">
+        SWITCH(supportRouter).to(refund, exchange, logistics, invoice, complaint, consult).DEFAULT(manual);
+    </chain>
+    <chain name="customDecision">
+        SWITCH(customDecisionRouter)
+            .to(customOption1, customOption2, customOption3, customOption4,
+                customOption5, customOption6, customOption7, customOption8)
+            .DEFAULT(customUndecided);
+    </chain>
+</flow>

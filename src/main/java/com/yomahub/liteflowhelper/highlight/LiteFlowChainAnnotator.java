@@ -79,7 +79,9 @@ public class LiteFlowChainAnnotator implements Annotator {
             } else if (subVarDefs.containsKey(word)) {
                 highlight(holder, range, LiteFlowHighlightColorSettings.SUB_VARIABLE_KEY);
             } else if (resolver.isNode(word)) {
-                highlight(holder, range, LiteFlowHighlightColorSettings.COMPONENT_KEY);
+                highlight(holder, range, resolver.isAiNode(word)
+                        ? LiteFlowHighlightColorSettings.AI_COMPONENT_KEY
+                        : LiteFlowHighlightColorSettings.COMPONENT_KEY);
             } else if (resolver.isChain(word)) {
                 highlight(holder, range, LiteFlowHighlightColorSettings.CHAIN_KEY);
             } else {

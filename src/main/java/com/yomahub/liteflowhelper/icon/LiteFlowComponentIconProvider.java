@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
+import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -48,7 +49,8 @@ public class LiteFlowComponentIconProvider extends IconProvider {
 
             // 1. 判断是否为继承式组件
             if (LiteFlowXmlUtil.isInheritanceComponent(psiClass)) {
-                return COMMON_COMPONENT_ICON;
+                NodeType aiType = LiteFlowXmlUtil.getAiComponentType(psiClass);
+                return aiType != null ? aiType.getIcon() : COMMON_COMPONENT_ICON;
             }
 
             // 2. 判断是否为类声明式组件

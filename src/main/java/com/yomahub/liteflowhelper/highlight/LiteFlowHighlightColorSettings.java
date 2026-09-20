@@ -22,6 +22,12 @@ public class LiteFlowHighlightColorSettings {
                         new TextAttributes(new JBColor(new Color(4, 124, 168), new Color(120, 204, 240)), null, null,
                                         null, Font.BOLD));
 
+        // AI Agent / Jev 的高亮：Dark(#C4A7E7)，Light(#7952B3)，柔和紫色。
+        public static final TextAttributesKey AI_COMPONENT_KEY = createTextAttributesKey(
+                        "LITEFLOW_AI_COMPONENT",
+                        new TextAttributes(new JBColor(new Color(0x79, 0x52, 0xB3), new Color(0xC4, 0xA7, 0xE7)),
+                                        null, null, null, Font.BOLD));
+
         // 子流程的高亮: Dark(#3d8beb), Light(#0052CC), 加粗
         public static final TextAttributesKey CHAIN_KEY = createTextAttributesKey(
                         "LITEFLOW_CHAIN",

@@ -1,5 +1,11 @@
 <scheme name="Default" version="142" parent_scheme="Default">
     <attributes>
+        <option name="LITEFLOW_AI_COMPONENT">
+            <value>
+                <option name="FOREGROUND" value="7952B3"/>
+                <option name="FONT_TYPE" value="1"/>
+            </value>
+        </option>
         <option name="LITEFLOW_COMPONENT">
             <value>
                 <option name="FOREGROUND" value="047CA8"/>

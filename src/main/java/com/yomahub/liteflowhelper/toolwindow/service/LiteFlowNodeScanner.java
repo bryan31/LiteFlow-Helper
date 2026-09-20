@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 public class LiteFlowNodeScanner {
 
     private static final Logger LOG = Logger.getInstance(LiteFlowNodeScanner.class);
+    private static final String SPRING_BEAN_ANNOTATION = "org.springframework.context.annotation.Bean";
 
     // LiteFlow核心节点组件的基类，用于查找它们的子类 (继承式)
     private static final String[] LITEFLOW_BASE_CLASSES = {
@@ -82,6 +83,16 @@ public class LiteFlowNodeScanner {
             List<LiteFlowNodeInfo> declarativeMethodNodes = findDeclarativeMethodNodes(project);
             nodeInfos.addAll(declarativeMethodNodes);
             LOG.info("声明式方法组件: " + declarativeMethodNodes.size() + " 个");
+
+            List<LiteFlowNodeInfo> beanNodes = findSpringBeanNodes(project);
+            // 已有扫描结果优先，避免新增来源改变同名节点的类型和跳转目标。
+            Set<String> existingIds = nodeInfos.stream().map(LiteFlowNodeInfo::getNodeId).collect(Collectors.toSet());
+            for (LiteFlowNodeInfo beanNode : beanNodes) {
+                if (existingIds.add(beanNode.getNodeId())) {
+                    nodeInfos.add(beanNode);
+                }
+            }
+            LOG.info("Spring @Bean 组件: " + beanNodes.size() + " 个");
 
             nodeInfos.sort(Comparator.comparing(LiteFlowNodeInfo::getNodeId));
             LOG.info("========== 扫描完成，共找到 " + nodeInfos.size() + " 个节点 ==========");
@@ -138,6 +149,10 @@ public class LiteFlowNodeScanner {
                     }
 
                     NodeType nodeType = determineNodeTypeFromSuperClass(baseClassName);
+                    NodeType aiType = LiteFlowXmlUtil.getAiComponentType(inheritor);
+                    if (aiType != null) {
+                        nodeType = aiType;
+                    }
 
                     boolean flag = javaNodeInfos.stream().anyMatch(liteFlowNodeInfo -> liteFlowNodeInfo.getNodeName().equals(nodeName));
                     if (!flag) {
@@ -155,6 +170,76 @@ public class LiteFlowNodeScanner {
 
         LOG.debug("继承式组件扫描完成，共找到 " + javaNodeInfos.size() + " 个组件");
         return javaNodeInfos;
+    }
+
+    /**
+     * 扫描返回 NodeComponent 或其子类型的 Spring @Bean 工厂方法。
+     * 返回类型可以是抽象基类，节点定义和跳转目标均以工厂方法为准。
+     */
+    private List<LiteFlowNodeInfo> findSpringBeanNodes(@NotNull Project project) {
+        JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
+        GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
+        PsiClass beanAnnotation = psiFacade.findClass(SPRING_BEAN_ANNOTATION, allScope);
+        if (beanAnnotation == null) {
+            return Collections.emptyList();
+        }
+
+        Map<PsiClass, NodeType> baseTypes = new LinkedHashMap<>();
+        for (String baseClassName : LITEFLOW_BASE_CLASSES) {
+            PsiClass baseClass = psiFacade.findClass(baseClassName, allScope);
+            if (baseClass != null) {
+                baseTypes.put(baseClass, determineNodeTypeFromSuperClass(baseClassName));
+            }
+        }
+
+        List<LiteFlowNodeInfo> nodes = new ArrayList<>();
+        for (PsiMethod method : AnnotatedElementsSearch.searchPsiMethods(beanAnnotation, GlobalSearchScope.projectScope(project))) {
+            if (project.isDisposed()) {
+                return Collections.emptyList();
+            }
+            PsiType returnType = method.getReturnType();
+            PsiClass returnClass = returnType instanceof PsiClassType ? ((PsiClassType) returnType).resolve() : null;
+            if (returnClass == null) {
+                continue;
+            }
+            PsiAnnotation annotation = method.getAnnotation(SPRING_BEAN_ANNOTATION);
+            if (annotation == null) {
+                continue;
+            }
+            String nodeId = getSpringBeanNodeId(method, annotation);
+            if (StringUtil.isEmpty(nodeId)) {
+                continue;
+            }
+            // 专用组件基类排在 NodeComponent 前，避免 SWITCH 等类型被归为普通组件。
+            for (Map.Entry<PsiClass, NodeType> baseType : baseTypes.entrySet()) {
+                if (returnClass.isEquivalentTo(baseType.getKey()) || returnClass.isInheritor(baseType.getKey(), true)) {
+                    NodeType aiType = LiteFlowXmlUtil.getAiComponentType(returnClass);
+                    nodes.add(new LiteFlowNodeInfo(nodeId, method.getName(),
+                            aiType != null ? aiType : baseType.getValue(), method, "Spring @Bean"));
+                    break;
+                }
+            }
+        }
+        return nodes;
+    }
+
+    private String getSpringBeanNodeId(@NotNull PsiMethod method, @NotNull PsiAnnotation annotation) {
+        PsiAnnotationMemberValue name = annotation.findDeclaredAttributeValue("name");
+        if (name == null || name instanceof PsiArrayInitializerMemberValue
+                && ((PsiArrayInitializerMemberValue) name).getInitializers().length == 0) {
+            name = annotation.findDeclaredAttributeValue("value");
+        }
+        if (name instanceof PsiArrayInitializerMemberValue) {
+            PsiAnnotationMemberValue[] names = ((PsiArrayInitializerMemberValue) name).getInitializers();
+            // 数组首项是主 beanName，其余为 Spring 别名，LiteFlow 不会将别名注册为节点。
+            name = names.length == 0 ? null : names[0];
+        }
+        if (name == null) {
+            return method.getName();
+        }
+        Object value = JavaPsiFacade.getInstance(method.getProject()).getConstantEvaluationHelper().computeConstantExpression(name);
+        // 显式名称无法解析时不回退方法名，避免生成运行时不存在的节点。
+        return value instanceof String ? (String) value : null;
     }
 
     /**
