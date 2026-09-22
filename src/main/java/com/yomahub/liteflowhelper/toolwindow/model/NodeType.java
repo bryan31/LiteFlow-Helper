@@ -10,7 +10,7 @@ public enum NodeType {
     // 继承式组件节点
     COMMON_COMPONENT("com.yomahub.liteflow.core.NodeComponent", "CM", "/icons/common.svg"),
     SWITCH_COMPONENT("com.yomahub.liteflow.core.NodeSwitchComponent", "SWI", "/icons/common.svg"),
-    BOOLEAN_COMPONENT("com.yomahub.liteflow.core.NodeBooleanComponent", "BOL", "/icons/common.svg"),
+    BOOLEAN_COMPONENT("com.yomahub.liteflow.core.NodeIfComponent", "BOL", "/icons/common.svg"),
     FOR_COMPONENT("com.yomahub.liteflow.core.NodeForComponent", "FOR", "/icons/common.svg"),
     ITERATOR_COMPONENT("com.yomahub.liteflow.core.NodeIteratorComponent", "ITR", "/icons/common.svg"),
 

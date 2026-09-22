@@ -17,6 +17,7 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.yomahub.liteflowhelper.toolwindow.model.LiteFlowNodeInfo;
 import com.yomahub.liteflowhelper.toolwindow.model.NodeType;
+import com.yomahub.liteflowhelper.utils.Clazz;
 import com.yomahub.liteflowhelper.utils.LiteFlowXmlUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,7 +38,7 @@ public class LiteFlowNodeScanner {
     // LiteFlow核心节点组件的基类，用于查找它们的子类 (继承式)
     private static final String[] LITEFLOW_BASE_CLASSES = {
             "com.yomahub.liteflow.core.NodeSwitchComponent",
-            "com.yomahub.liteflow.core.NodeBooleanComponent",
+            Clazz.NodeIfComponent,
             "com.yomahub.liteflow.core.NodeForComponent",
             "com.yomahub.liteflow.core.NodeIteratorComponent",
             LiteFlowXmlUtil.NODE_COMPONENT_CLASS
@@ -394,7 +395,7 @@ public class LiteFlowNodeScanner {
         if ("com.yomahub.liteflow.core.NodeSwitchComponent".equals(directSuperClassName)) {
             return NodeType.SWITCH_COMPONENT;
         }
-        if ("com.yomahub.liteflow.core.NodeBooleanComponent".equals(directSuperClassName)) {
+        if (Clazz.NodeIfComponent.equals(directSuperClassName)) {
             return NodeType.BOOLEAN_COMPONENT;
         }
         if ("com.yomahub.liteflow.core.NodeForComponent".equals(directSuperClassName)) {
